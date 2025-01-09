@@ -2,7 +2,7 @@
 
 import {useAppDispatch, useAppSelector} from '@/app/redux';
 import React from 'react'
-import { Icon, Layout, LucideIcon, Menu } from 'lucide-react'
+import { Factory, Icon, Layout, LucideIcon, Menu, Quote, ScrollText, Wrench } from 'lucide-react'
 import Link from 'next/link'
 import { setIsSidebarCollapsed } from '@/state';
 import { usePathname } from 'next/navigation';
@@ -41,7 +41,7 @@ const SidebarLink = ({
         <span 
           className={`${
             isCollapsed ? "hidden" : "block"
-          }font-medium text-gray-700`}
+          } font-medium text-gray-700`}
         >
           {label}
         </span>
@@ -67,46 +67,71 @@ const Sidebar = () => {
   return (
     <div className={sidebarClassNames}>
       <div
-        className={`flex gap-3 justify-between md:justify-normal items-center pt-8 ${
-          isSidebarCollapsed ? "px-5" : "px-8"
-        }`}
+      className={`flex gap-3 justify-between md:justify-normal items-center pt-8 ${
+        isSidebarCollapsed ? "px-5" : "px-8"
+      }`}
       >
-        
+      <div className="min-w-[27px] min-h-[27px]">
         <Image
-          src={Logo}
-          alt="streamline-logo"
-          width={60}
-          height={60}
-          priority
-          className="rounded w-8"
+        src={Logo}
+        alt="streamline-logo"
+        width={27}
+        height={27}
+        className="rounded w-8"
         />
-        <h1
-          className={`${
-            isSidebarCollapsed ? "hidden" : "block"
-          } font-extrabold text-2xl`}
-        >
-          Streamline
-        </h1>
-        
-        <button 
-          className="md:hidden px-3 py-3 bg-gray-100 rounded-full hover:bg-blue-100" 
-          onClick={toggleSidebar}
-        >
-          <Menu className="w-4 h-4" />
-        </button>
+      </div>
+
+      <h1
+        className={`${
+        isSidebarCollapsed ? "hidden" : "block"
+        } text-[20px] rubik-vinyl-regular text-gray-700`}
+      >
+        Streamline
+      </h1>
+      
+      <button 
+        className="md:hidden px-3 py-3 bg-gray-100 rounded-full hover:bg-blue-100" 
+        onClick={toggleSidebar}
+      >
+        <Menu className="w-4 h-4" />
+      </button>
       </div>
       
       {/* FOOTER */}
       <div className="flex-grow mt-8">
-        <SidebarLink 
-          href="/dashboard" 
-          icon={Layout} 
-          label="Dashboard" 
-          isCollapsed={isSidebarCollapsed} 
-        />
+      <SidebarLink 
+        href="/dashboard" 
+        icon={Layout} 
+        label="Dashboard" 
+        isCollapsed={isSidebarCollapsed} 
+      />
+      <SidebarLink 
+        href="/jobs" 
+        icon={Wrench} 
+        label="Jobs" 
+        isCollapsed={isSidebarCollapsed} 
+      />
+      <SidebarLink 
+        href="/companies" 
+        icon={Factory} 
+        label="Companies" 
+        isCollapsed={isSidebarCollapsed} 
+      />
+      <SidebarLink 
+        href="/notes" 
+        icon={ScrollText} 
+        label="Notes" 
+        isCollapsed={isSidebarCollapsed} 
+      />
+      <SidebarLink 
+        href="/quotes" 
+        icon={Quote} 
+        label="Quotes" 
+        isCollapsed={isSidebarCollapsed} 
+      />
       </div>
       <div>
-        <p className="text-center text-xs text-gray-500">&copy; 2025 EQSi</p>
+      <p className="text-center text-xs text-gray-500">&copy; 2025 EQSi</p>
       </div>
     </div>
   );
