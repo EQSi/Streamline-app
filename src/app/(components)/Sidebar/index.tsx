@@ -2,13 +2,14 @@
 
 import {useAppDispatch, useAppSelector} from '@/app/redux';
 import React from 'react'
-import { Factory, Icon, Layout, LucideIcon, Menu, Quote, ScrollText, Wrench } from 'lucide-react'
+import {Calendar, Contact, Forklift, Layout, LayoutList, LucideIcon, Menu, SquareChartGantt, StickyNote, Truck, User, Users, Wrench } from 'lucide-react'
 import Link from 'next/link'
 import { setIsSidebarCollapsed } from '@/state';
 import { usePathname } from 'next/navigation';
 import path from 'path';
 import Image from "next/image";
 import Logo from "@/assets/logo.png";
+import { Stick } from 'next/font/google';
 
 
 interface SidebarLinkProps {
@@ -106,31 +107,56 @@ const Sidebar = () => {
         isCollapsed={isSidebarCollapsed} 
       />
       <SidebarLink 
+        href="/schedule" 
+        icon={Calendar} 
+        label="Schedule" 
+        isCollapsed={isSidebarCollapsed} 
+      />
+      <SidebarLink 
         href="/jobs" 
         icon={Wrench} 
         label="Jobs" 
         isCollapsed={isSidebarCollapsed} 
       />
       <SidebarLink 
-        href="/companies" 
-        icon={Factory} 
-        label="Companies" 
+        href="/customers" 
+        icon={Users} 
+        label="Customers" 
         isCollapsed={isSidebarCollapsed} 
       />
       <SidebarLink 
-        href="/notes" 
-        icon={ScrollText} 
-        label="Notes" 
+        href="/contacts" 
+        icon={Contact} 
+        label="Contacts" 
         isCollapsed={isSidebarCollapsed} 
       />
       <SidebarLink 
-        href="/quotes" 
-        icon={Quote} 
-        label="Quotes" 
+        href="/tasks" 
+        icon={LayoutList} 
+        label="Tasks" 
         isCollapsed={isSidebarCollapsed} 
+      />
+      <SidebarLink 
+        href="/vendors" 
+        icon={Truck} 
+        label="Vendors" 
+        isCollapsed={isSidebarCollapsed} 
+      />
+      <SidebarLink 
+        href="/equipment" 
+        icon={Forklift} 
+        label="Equipment" 
+        isCollapsed={isSidebarCollapsed} 
+      />
+      <SidebarLink 
+        href="/reports" 
+        icon={SquareChartGantt} 
+        label="Reports" 
+        isCollapsed={isSidebarCollapsed}
       />
       </div>
-      <div>
+      <div className={`${isSidebarCollapsed ? "hidden" : "block"} mb-10`
+      }>
       <p className="text-center text-xs text-gray-500">&copy; 2025 EQSi</p>
       </div>
     </div>
