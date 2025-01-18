@@ -1,5 +1,15 @@
-import Dashboard from "@/app/dashboard/page"
+'use client';
+
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 
 export default function Home() {
-    return <Dashboard />
+  const router = useRouter();
+
+  useEffect(() => {
+    // Redirect to login page
+    router.push('/login');
+  }, [router]);
+
+  return null; // Render nothing while redirecting
 }
