@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
+import Logo from "@/assets/logo2.png";
 
 interface LoginFormData {
     username: string;
@@ -47,65 +49,71 @@ const GoogleLogo = () => (
 return (
     <div className="max-w-4xl max-h-4xl flex items-center justify-center">
         <div className="w-full max-h-full rounded-lg bg-gray-100 px-16 py-16 shadow-2xl">
-            <h2 className="mb-10 text-center text-4xl font-bold">
-                Streamline
-            </h2>
-            
+            <div className="flex justify-center mb-8">
+            <Image
+                src={Logo}
+                alt="streamline-logo"
+                width={200} // Adjusted width
+                height={200} // Added height
+                className="rounded bg-center"
+            />
+            </div>
             <form onSubmit={handleSubmit} className="space-y-8">
-                {error && (
-                    <div className="text-center text-base text-red-600">
-                        {error}
-                    </div>
-                )}
+            {error && (
+                <div className="text-center text-base text-red-600">
+                {error}
+                </div>
+            )}
 
+            <button
+                type="button"
+                onClick={() => {/* Add Google login logic here */}}
+                className="flex w-full items-center justify-center rounded-md border border-gray-300 bg-white px-8 py-4 text-lg font-semibold text-gray-700 transition-colors hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-[#4285F4] focus:ring-offset-2"
+            >
+                <GoogleLogo />
+                Sign in with Google
+            </button>
+
+            <hr className="my-4" />
+
+            <div className="space-y-6">
+                <input
+                type="text"
+                name="username"
+                required
+                className="block w-full rounded-md border border-gray-300 px-5 py-4 text-lg focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                placeholder="Username"
+                value={formData.username}
+                onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                />
+                
+                <input
+                type="password"
+                name="password"
+                required
+                className="block w-full rounded-md border border-gray-300 px-5 py-4 text-lg focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                placeholder="Password"
+                value={formData.password}
+                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                />
+
+                <div className="justify-start text-right">
+                <a href="#" className="text-sm text-blue-600 hover:underline">
+                    Forgot password?
+                </a>
+                </div>
+            </div>
+
+            <div className="flex justify-center">
                 <button
-                    type="button"
-                    onClick={() => {/* Add Google login logic here */}}
-                    className="flex w-full items-center justify-center rounded-md border border-gray-300 bg-white px-8 py-4 text-lg font-semibold text-gray-700 transition-colors hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-[#4285F4] focus:ring-offset-2"
+                type="submit"
+                className="w-1/2 rounded-md bg-[#3b82f6] px-8 py-4 text-lg font-semibold text-white transition-colors hover:bg-[#2563eb] focus:outline-none focus:ring-2 focus:ring-[#3b82f6] focus:ring-offset-2"
                 >
-                    <GoogleLogo />
-                    Sign in with Google
+                Sign in
                 </button>
-
-                <hr className="my-4" />
-
-                <div className="space-y-6">
-                    <input
-                        type="text"
-                        name="username"
-                        required
-                        className="block w-full rounded-md border border-gray-300 px-5 py-4 text-lg focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                        placeholder="Username"
-                        value={formData.username}
-                        onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                    />
-                    
-                    <input
-                        type="password"
-                        name="password"
-                        required
-                        className="block w-full rounded-md border border-gray-300 px-5 py-4 text-lg focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                        placeholder="Password"
-                        value={formData.password}
-                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    />
-
-                    <div className="justify-start text-right">
-                        <a href="#" className="text-sm text-blue-600 hover:underline">
-                            Forgot password?
-                        </a>
-                    </div>
-                </div>
-
-                <div className="flex justify-center">
-                    <button
-                        type="submit"
-                        className="w-1/2 rounded-md bg-[#3b82f6] px-8 py-4 text-lg font-semibold text-white transition-colors hover:bg-[#2563eb] focus:outline-none focus:ring-2 focus:ring-[#3b82f6] focus:ring-offset-2"
-                    >
-                        Sign in
-                    </button>
-                </div>
+            </div>
             </form>
         </div>
     </div>
 );
+}
