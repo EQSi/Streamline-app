@@ -46,13 +46,6 @@ const Navbar = () => {
             {/* right side */}
             <div className="flex justify-between items-center gap-5">
                 <div className="hidden md:flex justify-between items-center gap-5">
-                    <button onClick={toggleDarkmode}>
-                        {isDarkMode ? (
-                            <Sun className="cursor-pointer text-gray-500" size={24} />
-                        ) : (
-                            <Moon className="cursor-pointer text-gray-500" size={24} />
-                        )}
-                    </button>
                     <div className="relative">
                         <Bell className="cursor-pointer text-gray-500" size={24} />
                         <span className="absolute -top-2 -right-2 inline-flex items-center justify-center px-[0.4rem] py-1 text-xs font-semibold leading-none text-red-100 bg-red-400 rounded-full">
@@ -61,10 +54,9 @@ const Navbar = () => {
                     </div>
                     <hr className="w-0 h-7 border-solid border-l border-gray-300 mx-3" />
                     <div className="flex items-center gap-3 cursor-pointer">
-                        {/*<div className="w-9 h-9">image</div>*/}
                         <span className="font-semibold">John Doe</span>
                     </div>
-                    <a href="/settings">
+                    <a href="/dashboard/settings">
                         <Settings className="cursor-pointer text-gray-500" size={24} />
                     </a>
                 </div>

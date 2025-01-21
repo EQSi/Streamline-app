@@ -107,7 +107,7 @@ const Sidebar = () => {
         isCollapsed={isSidebarCollapsed} 
       />
       <SidebarLink 
-        href="/schedule" 
+        href="/dashboard/schedule" 
         icon={Calendar} 
         label="Schedule" 
         isCollapsed={isSidebarCollapsed} 

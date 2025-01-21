@@ -18,6 +18,30 @@ export default function LoginForm() {
     const [error, setError] = useState('');
     const router = useRouter();
 
+    const handleGoogleLogin = async () => {
+        try {
+            console.log('Initiating Google login...');
+            // First check if server is reachable
+            const response = await fetch('http://localhost:6000/api/auth/google', {
+                method: 'GET',
+                credentials: 'include',
+                headers: {
+                    'Accept': 'application/json'
+                }
+            });
+            
+            if (response.redirected) {
+                window.location.href = response.url;
+            } else {
+                // If no redirect, manually go to Google auth
+                window.location.href = 'http://localhost:6000/api/auth/google';
+            }
+        } catch (error) {
+            console.error('Google login error:', error);
+            setError('Failed to connect to authentication server');
+        }
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
@@ -53,8 +77,8 @@ return (
             <Image
                 src={Logo}
                 alt="streamline-logo"
-                width={200} // Adjusted width
-                height={200} // Added height
+                width={200} 
+                height={200} 
                 className="rounded bg-center"
             />
             </div>
@@ -67,7 +91,7 @@ return (
 
             <button
                 type="button"
-                onClick={() => {/* Add Google login logic here */}}
+                onClick={handleGoogleLogin}
                 className="flex w-full items-center justify-center rounded-md border border-gray-300 bg-white px-8 py-4 text-lg font-semibold text-gray-700 transition-colors hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-[#4285F4] focus:ring-offset-2"
             >
                 <GoogleLogo />
