@@ -1,11 +1,15 @@
+
 'use client';
 
-import React from 'react';
 import Navbar from '@/app/(components)/Navbar';
 import Sidebar from '@/app/(components)/Sidebar';
 import { useAppSelector } from '@/app/redux';
 
-const ScheduleLayout: React.FC = ({ children }) => {
+export default function AdminLayout({
+    children,
+}: {
+    children: React.ReactNode;
+}) {
     const isSidebarCollapsed = useAppSelector(
         (state) => state.global.isSidebarCollapsed
     );
@@ -23,6 +27,4 @@ const ScheduleLayout: React.FC = ({ children }) => {
             </main>
         </div>
     );
-};
-
-export default ScheduleLayout;
+}

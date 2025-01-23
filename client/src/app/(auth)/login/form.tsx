@@ -20,7 +20,7 @@ export default function LoginForm() {
 
     const handleGoogleLogin = async () => {
         try {
-            const response = await fetch('http://localhost:6000/api/auth/google', {
+            const response = await fetch('http://localhost:8080/api/auth/google', {
                 method: 'GET',
                 credentials: 'include',
                 headers: {
@@ -31,7 +31,7 @@ export default function LoginForm() {
             if (response.redirected) {
                 window.location.href = response.url; // This should redirect to the Google OAuth flow
             } else {
-                window.location.href = 'http://localhost:6000/api/auth/google';
+                window.location.href = 'http://localhost:8080/api/auth/google';
             }
         } catch (error) {
             console.error('Google login error:', error);

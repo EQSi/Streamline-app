@@ -1,39 +1,41 @@
 import express from 'express';
-import session from 'express-session';
-import passport from 'passport';
+import fs from 'fs';
+import https from 'https';
+import path from 'path';
 import cors from 'cors';
-import { configurePassport } from './config/passport';
+import dotenv from 'dotenv';
 import authRoutes from './routes/authRoutes';
+import userRoutes from './routes/userRoutes';
+import debugRoutes from './routes/debugRoutes';
+import healthRoute from './routes/healthRoutes';
+import testRoutes from './routes/test';
+
+dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 6000;
+const PORT = process.env.PORT || 8080;
+
+const options = {
+  key: fs.readFileSync(path.resolve(__dirname, '../server/server.key')),
+  cert: fs.readFileSync(path.resolve(__dirname, '../server/server.crt'))
+};
+
+app.use(cors({
+  origin: 'https://localhost:3000', 
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  credentials: true,
+}));
 
 // Middleware
 app.use(express.json());
-app.use(
-  cors({
-    origin: 'http://localhost:3000', // Frontend origin
-    credentials: true,
-  })
-);
-
-// Session
-app.use(
-  session({
-    secret: process.env.SESSION_SECRET!,
-    resave: false,
-    saveUninitialized: false,
-    cookie: { secure: false, httpOnly: true, maxAge: 24 * 60 * 60 * 1000 },
-  })
-);
-
-// Passport
-app.use(passport.initialize());
-app.use(passport.session());
-configurePassport();
 
 // Routes
-app.use('/api/auth', authRoutes);
+app.use('/', authRoutes);
+app.use('/', userRoutes);
+app.use('/', debugRoutes);
+app.use('/', healthRoute);
+app.use('/api/test', testRoutes);
 
-// Start server
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+https.createServer(options, app).listen(PORT, () => {
+  console.log(`Server running on https://localhost:${PORT}`);
+});

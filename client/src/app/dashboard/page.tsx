@@ -8,10 +8,13 @@ import 'react-resizable/css/styles.css';
 const ResponsiveGridLayout = WidthProvider(Responsive);
 
 const DashboardPage: React.FC = () => {
+  
+  const userId = 'exampleUserId';
+
   const [minimizedCards, setMinimizedCards] = useState<{ [key: string]: boolean }>({});
   const [layouts, setLayouts] = useState(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('dashboardLayouts');
+      const saved = localStorage.getItem(`dashboardLayouts-${userId}`);
       return saved ? JSON.parse(saved) : {};
     }
     return {};
@@ -32,18 +35,18 @@ const DashboardPage: React.FC = () => {
       i: card.i,
       x: i % 3,
       y: Math.floor(i / 3),
-      w: 1,
-      h: 2,
-      minW: 1,
-      minH: 1
+      w: 3,
+      h: 3,
+      minW: 2,
+      minH: 2
     }))
   };
 
   useEffect(() => {
     if (Object.keys(layouts).length > 0) {
-      localStorage.setItem('dashboardLayouts', JSON.stringify(layouts));
+      localStorage.setItem(`dashboardLayouts-${userId}`, JSON.stringify(layouts));
     }
-  }, [layouts]);
+  }, [layouts, userId]);
 
   const handleLayoutChange = (layout: any, allLayouts: any) => {
     setLayouts(allLayouts);
@@ -58,13 +61,13 @@ const DashboardPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
-      <div className="container mx-auto">
+      <div className="mx-auto w-auto">
         <h1 className="text-3xl font-bold mb-6">Dashboard</h1>
         <ResponsiveGridLayout
           className="layout"
           layouts={layouts || defaultLayouts}
-          breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
-          cols={{ lg: 12, md: 10, sm: 6, xs: 4, xxs: 2 }}
+          breakpoints={{ lg: 2000, md: 996, sm: 768, xs: 480, xxs: 0 }}
+          cols={{ lg: 20, md: 10, sm: 6, xs: 4, xxs: 2 }}
           rowHeight={100}
           onLayoutChange={handleLayoutChange}
           isDraggable
