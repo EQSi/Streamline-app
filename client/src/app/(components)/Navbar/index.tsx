@@ -56,7 +56,7 @@ const Navbar = () => {
                     <div className="flex items-center gap-3 cursor-pointer">
                         <span className="font-semibold">John Doe</span>
                     </div>
-                    <a href="/dashboard/settings">
+                    <a href="/settings">
                         <Settings className="cursor-pointer text-gray-500" size={24} />
                     </a>
                 </div>

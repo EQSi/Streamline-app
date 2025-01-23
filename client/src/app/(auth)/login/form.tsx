@@ -20,27 +20,24 @@ export default function LoginForm() {
 
     const handleGoogleLogin = async () => {
         try {
-            console.log('Initiating Google login...');
-            // First check if server is reachable
             const response = await fetch('http://localhost:6000/api/auth/google', {
                 method: 'GET',
                 credentials: 'include',
                 headers: {
-                    'Accept': 'application/json'
-                }
+                    'Accept': 'application/json',
+                },
             });
             
             if (response.redirected) {
-                window.location.href = response.url;
+                window.location.href = response.url; // This should redirect to the Google OAuth flow
             } else {
-                // If no redirect, manually go to Google auth
                 window.location.href = 'http://localhost:6000/api/auth/google';
             }
         } catch (error) {
             console.error('Google login error:', error);
-            setError('Failed to connect to authentication server');
         }
     };
+    
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();

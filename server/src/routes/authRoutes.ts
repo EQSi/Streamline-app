@@ -1,23 +1,38 @@
 import express from 'express';
 import passport from 'passport';
-import { AuthController } from '../controllers/auth.controller';
 
 const router = express.Router();
-const authController = new AuthController();
 
-router.post('/login', authController.login);
-router.get('/google', 
-    (req, res, next) => {
-        console.log('Google auth initiated');
-        passport.authenticate('google', { 
-            scope: ['profile', 'email'],
-            prompt: 'select_account'
-        })(req, res, next);
+router.get(
+  '/google',
+  passport.authenticate('google', { scope: ['profile', 'email'] })
+);
+
+router.get(
+  '/google/callback',
+  passport.authenticate('google', { failureRedirect: '/login' }),
+  (req, res) => {
+    res.redirect('http://localhost:3000'); // Redirect to frontend after login
+  }
+);
+
+router.get('/logout', (req, res) => {
+  req.logout((err) => {
+    if (err) {
+      console.error(err);
+      res.status(500).send('Error logging out');
+    } else {
+      res.redirect('/');
     }
-);
-router.get('/google/callback', 
-    passport.authenticate('google', { failureRedirect: '/login' }),
-    authController.googleCallback
-);
+  });
+});
+
+router.get('/user', (req, res) => {
+  if (req.isAuthenticated()) {
+    res.json(req.user);
+  } else {
+    res.status(401).send('Not authenticated');
+  }
+});
 
 export default router;

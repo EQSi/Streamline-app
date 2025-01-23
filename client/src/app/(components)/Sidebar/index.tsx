@@ -2,7 +2,7 @@
 
 import {useAppDispatch, useAppSelector} from '@/app/redux';
 import React from 'react'
-import {Calendar, Contact, Forklift, Layout, LayoutList, LucideIcon, Menu, SquareChartGantt, StickyNote, Truck, User, Users, Wrench } from 'lucide-react'
+import {Calendar, Contact, Forklift, Layout, LayoutList, LucideIcon, Menu, SquareChartGantt, StickyNote, Truck, User, Users, Wrench, UserPen } from 'lucide-react'
 import Link from 'next/link'
 import { setIsSidebarCollapsed } from '@/state';
 import { usePathname } from 'next/navigation';
@@ -107,7 +107,7 @@ const Sidebar = () => {
         isCollapsed={isSidebarCollapsed} 
       />
       <SidebarLink 
-        href="/dashboard/schedule" 
+        href="/schedule" 
         icon={Calendar} 
         label="Schedule" 
         isCollapsed={isSidebarCollapsed} 
@@ -152,6 +152,12 @@ const Sidebar = () => {
         href="/reports" 
         icon={SquareChartGantt} 
         label="Reports" 
+        isCollapsed={isSidebarCollapsed}
+      />
+      <SidebarLink 
+        href="/admin" 
+        icon={UserPen} 
+        label="Admin" 
         isCollapsed={isSidebarCollapsed}
       />
       </div>
