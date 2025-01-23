@@ -1,5 +1,46 @@
-node_modules
-# Keep environment variables out of version control
+# Node.js files
+node_modules/
+
+# Logs
+*.log
+*.log.*
+
+# Environment variables
 .env
-.crt
-.key
+.env.*
+
+# npm & yarn lock files (optional based on preference)
+npm-debug.log*
+yarn-error.log
+
+# Build output
+dist/
+build/
+coverage/
+
+# TypeScript files (if compiled)
+*.tsbuildinfo
+
+# IDE/editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+*.swn
+
+# Operating system files
+.DS_Store
+Thumbs.db
+
+# Other build artifacts
+*.tgz
+*.zip
+
+# Optional: To ignore any secrets, certificate files, or keys
+*.key
+*.pem
+*.crt
+
+# Optional: Ignore test reports or debug files
+test-logs/
+debug.log

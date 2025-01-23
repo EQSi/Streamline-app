@@ -16,8 +16,8 @@ const app = express();
 const PORT = process.env.PORT || 8080;
 
 const options = {
-  key: fs.readFileSync(path.resolve(__dirname, '../server/server.key')),
-  cert: fs.readFileSync(path.resolve(__dirname, '../server/server.crt'))
+  key: fs.readFileSync(path.resolve(__dirname, '../server.key')),
+  cert: fs.readFileSync(path.resolve(__dirname, '../server.crt'))
 };
 
 app.use(cors({
