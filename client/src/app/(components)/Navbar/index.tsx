@@ -2,7 +2,7 @@
 
 import { useAppDispatch, useAppSelector } from "@/app/redux";
 import { setIsDarkMode, setIsSidebarCollapsed } from "@/state";
-import { Search, Settings, Sun, Bell, Menu, Moon } from "lucide-react";
+import { Search, Settings, Bell, Menu} from "lucide-react";
 import React from "react";
 
 const Navbar = () => {
@@ -17,10 +17,6 @@ const Navbar = () => {
     
       const toggleSidebar = () => {
         disbatch(setIsSidebarCollapsed(!isSidebarCollapsed));
-      };
-
-      const toggleDarkmode = () => {
-        disbatch(setIsDarkMode(!isDarkMode));
       };
     return (
         <div className="flex justify-between items-center w-full mb-7">
@@ -54,7 +50,7 @@ const Navbar = () => {
                     </div>
                     <hr className="w-0 h-7 border-solid border-l border-gray-300 mx-3" />
                     <div className="flex items-center gap-3 cursor-pointer">
-                        <span className="font-semibold">John Doe</span>
+                        <span className="font-semibold">{useAppSelector((state) => state.user?.name || "Guest")}</span>
                     </div>
                     <a href="/settings">
                         <Settings className="cursor-pointer text-gray-500" size={24} />

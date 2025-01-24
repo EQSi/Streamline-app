@@ -27,20 +27,29 @@ export const configurePassport = () => {
       },
       async (accessToken, refreshToken, profile, done) => {
         try {
+          const email = profile.emails?.[0].value || 'no-email@example.com'; // Provide a default value
           const user = await prisma.user.upsert({
             where: { googleId: profile.id },
-            update: { googleAccessToken: accessToken },
+            update: { 
+              googleAccessToken: accessToken,
+              googleRefreshToken: refreshToken || '', // Provide a default value if undefined
+              updatedAt: new Date(),
+            },
             create: {
               googleId: profile.id,
               googleAccessToken: accessToken,
-              googleRefreshToken: refreshToken,
-              username: profile.emails?.[0].value || '',
+              googleRefreshToken: refreshToken || '', // Provide a default value if undefined
+              username: email,
               password: '', // You may want to handle password creation differently
+              roles: 'Employee', // Default role
+              isAdmin: false, // Default isAdmin value
+              createdAt: new Date(),
+              updatedAt: new Date(),
             },
           });
-          return done(null, user);
+          done(null, user);
         } catch (err) {
-          return done(err);
+          done(err);
         }
       }
     )

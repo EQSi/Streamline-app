@@ -2,7 +2,7 @@
 
 import {useAppDispatch, useAppSelector} from '@/app/redux';
 import React from 'react'
-import {Calendar, Contact, Forklift, Layout, LayoutList, LucideIcon, Menu, SquareChartGantt, StickyNote, Truck, User, Users, Wrench, UserPen } from 'lucide-react'
+import {Calendar, Contact, Forklift, Layout, LayoutList, LucideIcon, Menu, SquareChartGantt, Truck, User, Users, Wrench, UserPen } from 'lucide-react'
 import Link from 'next/link'
 import { setIsSidebarCollapsed } from '@/state';
 import { usePathname } from 'next/navigation';

@@ -1,20 +1,16 @@
-import express from 'express';
+// filepath: /Users/jtwellspring/repos/Streamline-app/server/src/routes/authRoutes.ts
+import { Router } from 'express';
+import passport from 'passport';
 
-const router = express.Router();
+const router = Router();
 
-// Route for Google OAuth
-router.get('/google', (req, res) => {
-  res.send('Google OAuth login page');
-});
+router.get('/api/auth/google', passport.authenticate('google', {
+  scope: ['profile', 'email']
+}));
 
-// Route for Google OAuth callback
-router.get('/google/callback', (req, res) => {
-  res.send('Google OAuth callback');
-});
-
-// Route for logout
-router.get('/logout', (req, res) => {
-  res.send('Logout successful');
-});
+router.get('/api/auth/google/callback', passport.authenticate('google', {
+  failureRedirect: '/login',
+  successRedirect: 'https://localhost:3000/dashboard' // Redirect to the desired route after successful login
+}));
 
 export default router;

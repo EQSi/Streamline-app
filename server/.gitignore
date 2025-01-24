@@ -40,6 +40,7 @@ Thumbs.db
 *.key
 *.pem
 *.crt
+*.csr
 
 # Optional: Ignore test reports or debug files
 test-logs/
