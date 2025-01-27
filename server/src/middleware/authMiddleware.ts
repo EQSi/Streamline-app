@@ -1,18 +1,24 @@
-import { Request, Response, NextFunction } from 'express';
-import jwt from 'jsonwebtoken';
+import { Request, Response, NextFunction, Router } from 'express';
+import passport from 'passport';
 
-export const authMiddleware = (req: Request, res: Response, next: NextFunction) => {
-  const token = req.headers.authorization?.split(' ')[1];
-  
-  if (!token) {
-    return res.status(401).json({ error: 'No token provided' });
-  }
+const router = Router();
 
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET!);
-    req.user = decoded;
-    next();
-  } catch (err) {
-    return res.status(401).json({ error: 'Invalid token' });
+const isAuthenticated = (req: Request, res: Response, next: NextFunction) => {
+  if (req.isAuthenticated()) {
+    return next();
   }
+  console.warn(`Unauthorized access attempt to ${req.originalUrl}`);
+  res.status(401).json({ error: 'Not authenticated' });
 };
+
+router.get('/api/auth/me', isAuthenticated, (req, res) => {
+  if (req.user) {
+    res.json(req.user);
+  } else {
+    console.warn('Authenticated user not found in session');
+    res.status(404).json({ error: 'User not found' });
+  }
+});
+
+export { isAuthenticated as ensureAuthenticated };
+export default router;
