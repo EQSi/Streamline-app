@@ -16,7 +16,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 }
 
 function AdminLayoutContent({ children }: { children: React.ReactNode }) {
-    const { data: session, status, error } = useSession();
+    const { data: session, status } = useSession();
     const isDarkMode = useAppSelector((state) => state.global.isDarkMode);
     const isSidebarCollapsed = useAppSelector((state) => state.global.isSidebarCollapsed);
     const router = useRouter();
@@ -36,16 +36,13 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
         return null;  // If unauthenticated, render nothing
     }
 
-    if (error) {
-        return <div>Error: {error.message}</div>;  // Error handling for session
-    }
-
     return (
         <div className={`${isDarkMode ? "dark" : "light"} flex bg-gray-50 text-gray-900 w-full min-h-screen`}>
             <Sidebar />
             <main className={`flex flex-col w-full h-full py-7 px-9 bg-gray-50 ${isSidebarCollapsed ? "md:pl-24" : "md:pl-72"}`}>
                 <Navbar />
                 {children}  {/* Render children components inside the admin layout */}
+                <user-management />  {/* Render the user management page */}
             </main>
         </div>
     );

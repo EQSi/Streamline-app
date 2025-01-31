@@ -1,4 +1,4 @@
-import { NextFunction, Request, Response } from 'express';
+import { NextFunction, Request, Response, RequestHandler } from 'express';
 import jwt from 'jsonwebtoken';
 
 // Extend the Express Request object to include userId (from JWT)
@@ -6,19 +6,25 @@ export interface AuthRequest extends Request {
   userId?: string;
 }
 
-export const authenticateToken = (req: AuthRequest, res: Response, next: NextFunction): Response | void => {
+// Middleware to validate JWT if you're using token-based authentication
+export const authenticateToken: RequestHandler = (req, res, next) => {
+  // Try to get the token from either cookies or Authorization header
   const token = req.cookies?.token || req.headers['authorization']?.split(' ')[1];
 
   if (!token) {
-    return res.status(401).json({ error: 'Unauthorized: No token provided' });
+    res.status(401).json({ error: 'Unauthorized: No token provided' });
+    return;
   }
 
+  // Verify the token
   jwt.verify(token, process.env.JWT_SECRET as string, (err: jwt.VerifyErrors | null, decoded: any) => {
     if (err) {
-      return res.status(403).json({ error: 'Forbidden: Invalid token' });
+      res.status(403).json({ error: 'Forbidden: Invalid token' });
+      return;
     }
 
-    req.userId = decoded.id;
+    // Attach user info (e.g., userId) to the request object
+    (req as AuthRequest).userId = decoded.id;
     next();
   });
 };

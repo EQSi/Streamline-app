@@ -27,7 +27,7 @@ router.get('/users/:id', async (req: Request, res: Response) => {
   const { id } = req.params;
   try {
     const user = await prisma.user.findUnique({
-      where: { id: Number(id) },
+      where: { id: parseInt(id, 10) }, // Convert id to integer
     });
 
     if (user) {
@@ -42,6 +42,8 @@ router.get('/users/:id', async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Failed to fetch user' });
   }
 });
+
+
 
 // Create a new user
 router.post('/users', async (req: Request, res: Response) => {

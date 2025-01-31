@@ -40,8 +40,8 @@ app.use('/', healthRoute);
 app.use('/api/test', testRoutes);
 
 
-app.use('/api', authenticateToken, userRoutes);  // Protect this route with JWT
-app.use('/api', authenticateToken, employeeRoutes);   // Protect employee routes with JWT
+app.use('/api', [authenticateToken], userRoutes);  // Protect this route with JWT
+app.use('/api', [authenticateToken], employeeRoutes);   // Protect employee routes with JWT
 
 // HTTPS server setup
 https.createServer(options, app).listen(PORT, () => {

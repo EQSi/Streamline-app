@@ -55,7 +55,7 @@ export default function UserManagementPage() {
     };
 
     useEffect(() => {
-        if (!session?.accessToken) return;
+        if (!session || !session.accessToken) return;
 
         const fetchEmployees = async () => {
             try {

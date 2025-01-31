@@ -1,26 +1,55 @@
 "use client";
 
 import { useAppDispatch, useAppSelector } from "@/app/redux";
-import { setIsDarkMode, setIsSidebarCollapsed } from "@/state";
-import { Search, Settings, Bell, Menu} from "lucide-react";
-import React from "react";
+import { setIsSidebarCollapsed } from "@/state";
+import { Search, Settings, Bell, Menu } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
 
 const Navbar = () => {
-    const disbatch = useAppDispatch();
+    const dispatch = useAppDispatch();
     const isSidebarCollapsed = useAppSelector(
       (state) => state.global.isSidebarCollapsed
     );
 
-    const isDarkMode = useAppSelector(
-        (state) => state.global.isDarkMode
-    );
-    
+    const { data: session }: { data: any } = useSession(); // Get session
+    const [user, setUser] = useState({ firstName: "", lastName: "" });
+
+    useEffect(() => {
+        const fetchUserData = async () => {
+            if (!session?.user?.accessToken || !session?.user?.id) return; // Wait for session to be available
+
+            try {
+                const employeeResponse = await fetch(`https://localhost:8080/api/employees/${session.user.id}`, {
+                    credentials: 'include',
+                    headers: {
+                        "Authorization": `Bearer ${session.accessToken}`,
+                        "Content-Type": "application/json",
+                        "Cache-Control": "no-store",
+                    },
+                });
+
+                if (employeeResponse.ok) {
+                    const employeeData = await employeeResponse.json();
+                    setUser({ firstName: employeeData.firstName, lastName: employeeData.lastName });
+                } else {
+                    throw new Error('Failed to fetch employee data');
+                }
+            } catch (error) {
+                console.error("Failed to fetch user data", error);
+            }
+        };
+
+        fetchUserData();
+    }, [session]); // Re-run when session updates
+
     const toggleSidebar = () => {
-      disbatch(setIsSidebarCollapsed(!isSidebarCollapsed));
+        dispatch(setIsSidebarCollapsed(!isSidebarCollapsed));
     };
+
     return (
       <div className="flex justify-between items-center w-full mb-6 figtree-font">
-        {/* left side */}
+        {/* Left side */}
         <div className="flex justify-between items-center gap-5">
             <button
               className="px-3 py-3 bg-gray-300 rounded-full hover:bg-blue-100"
@@ -39,7 +68,8 @@ const Navbar = () => {
               </div>
             </div>
         </div>
-        {/* right side */}
+        
+        {/* Right side */}
         <div className="flex justify-between items-center gap-5">
             <div className="hidden md:flex justify-between items-center gap-5">
               <div className="relative">
@@ -50,7 +80,7 @@ const Navbar = () => {
               </div>
               <hr className="w-0 h-7 border-solid border-l border-gray-300 mx-3" />
               <div className="flex items-center gap-3 cursor-pointer">
-                <span className="font-semibold">{"Guest"}</span>
+                <span className="font-semibold">{user.firstName} {user.lastName}</span>
               </div>
               <a href="/settings">
                 <Settings className="cursor-pointer text-gray-500" size={24} />
