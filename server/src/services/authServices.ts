@@ -9,26 +9,18 @@ export class AuthService {
     this.prisma = new PrismaClient();
   }
 
-  async login(username: string, password: string) {
-    const user = await this.prisma.user.findUnique({ 
-      where: { username } 
-    });
-
+  async login(username: string, password: string): Promise<{ token: string }> {
+    const user = await this.prisma.user.findUnique({ where: { username }, select: { username: true, password: true } });
     if (!user) {
-      throw new Error('User not found');
+      throw new Error('Invalid credentials');
     }
 
-    const isValid = await bcrypt.compare(password, user.password);
-    if (!isValid) {
-      throw new Error('Invalid password');
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
+      throw new Error('Invalid credentials');
     }
 
-    const token = jwt.sign(
-      { userId: user.id }, 
-      process.env.JWT_SECRET!,
-      { expiresIn: '24h' }
-    );
-
+    const token = jwt.sign({ username }, process.env.SESSION_SECRET || 'default_secret', { expiresIn: '1h' });
     return { token };
   }
 }

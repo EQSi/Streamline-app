@@ -1,31 +1,69 @@
-import { Router } from 'express';
-import passport from 'passport';
-import session from 'express-session';
-import { ensureAuthenticated } from '../middleware/authMiddleware';
+import { Router, Request, Response } from 'express';
+import { PrismaClient } from '@prisma/client';
+import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
 
 const router = Router();
+const prisma = new PrismaClient();
 
-router.use(session({
-  secret: '7af5874c0999e9335418ef344d1704b67e5e2c7276a508ed7026df67ec44c34290239904cd344e51f449184f0f831630027a798d03d2ffeb7c18dc6e4156c848',
-  resave: false,
-  saveUninitialized: false
-}));
+router.post('/login', async (req: Request, res: Response): Promise<void> => {
+  const { username, password } = req.body as { username: string, password: string };
 
-router.use(passport.initialize());
-router.use(passport.session());
+  try {
+    const user = await prisma.user.findUnique({
+      where: { username },
+    });
 
-router.get('/api/auth/google', passport.authenticate('google', {
-  scope: ['profile', 'email']
-}));
+    if (!user) {
+      res.status(401).json({ error: 'Invalid username or password' });
+      return;
+    }
 
-router.get('/api/auth/google/callback', passport.authenticate('google', {
-  failureRedirect: '/login',
-  successRedirect: 'https://localhost:3000/dashboard' // Redirect to the desired route after successful login
-}));
+    const isPasswordValid = await bcrypt.compare(password, user.password);
 
-// Add the /api/auth/me endpoint
-router.get('/api/auth/me', ensureAuthenticated, (req, res) => {
-  res.json(req.user);
+    if (!isPasswordValid) {
+      res.status(401).json({ error: 'Invalid username or password' });
+      return;
+    }
+
+    const token = jwt.sign({ userId: user.id, isAdmin: user.isAdmin }, process.env.JWT_SECRET!, {
+      expiresIn: '1h',
+    });
+
+    res.status(200).json({ token });
+  } catch (error) {
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.post('/google-login', async (req: Request, res: Response): Promise<void> => {
+  const { googleId, googleAccessToken, googleRefreshToken } = req.body as { googleId: string, googleAccessToken: string, googleRefreshToken: string };
+
+  try {
+    let user = await prisma.user.findUnique({
+      where: { googleId },
+    });
+
+    if (!user) {
+      user = await prisma.user.create({
+        data: {
+          googleId,
+          googleAccessToken,
+          googleRefreshToken,
+          username: `google_${googleId}`,
+          password: '', // No password for Google login
+        },
+      });
+    }
+
+    const token = jwt.sign({ userId: user.id, isAdmin: user.isAdmin }, process.env.JWT_SECRET!, {
+      expiresIn: '1h',
+    });
+
+    res.json({ token });
+  } catch (error) {
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
 export default router;

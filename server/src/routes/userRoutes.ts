@@ -1,36 +1,39 @@
 import { Router, Request, Response } from 'express';
 import prisma from '../prismaClient'; // Ensure you have a Prisma client setup
-import { EmployeeStatus } from '@prisma/client'; // Import the enum from Prisma
+import bcrypt from 'bcrypt'; // Ensure you have bcrypt installed
 
 const router = Router();
 
-// Get all users with their related employees
+// Get all users
 router.get('/users', async (req: Request, res: Response) => {
   try {
-    const users = await prisma.user.findMany({
-      include: {
-        employee: true,
-      },
+    const users = await prisma.user.findMany();
+
+    // Exclude sensitive data from the response (e.g., passwords)
+    const usersWithoutPasswords = users.map(user => {
+      const { password, ...publicUserData } = user; // Destructure and remove password
+      return publicUserData;
     });
-    res.json(users);
+
+    res.json(usersWithoutPasswords);
   } catch (error) {
     console.error('Error fetching users:', error);
     res.status(500).json({ error: 'Failed to fetch users' });
   }
 });
 
-// Get a specific user with their related employee by ID
+// Get a specific user by ID
 router.get('/users/:id', async (req: Request, res: Response) => {
   const { id } = req.params;
   try {
     const user = await prisma.user.findUnique({
       where: { id: Number(id) },
-      include: {
-        employee: true,
-      },
     });
+
     if (user) {
-      res.json(user);
+      // Exclude password from the response
+      const { password, ...publicUserData } = user;
+      res.json(publicUserData);
     } else {
       res.status(404).json({ error: 'User not found' });
     }
@@ -40,80 +43,65 @@ router.get('/users/:id', async (req: Request, res: Response) => {
   }
 });
 
-// Create a new user and employee
+// Create a new user
 router.post('/users', async (req: Request, res: Response) => {
-  const { username, password, role, firstName, lastName, email, phoneNumber, position, startDate, status, salary } = req.body as {
-    username: string;
-    password: string;
-    role: undefined;
-    firstName: string;
-    lastName: string;
-    email: string;
-    phoneNumber: string;
-    position: string;
-    startDate: string;
-    status: EmployeeStatus;
-    salary: number;
-  };
+  const { username, password, roles, isAdmin } = req.body;
   try {
+    const hashedPassword = await bcrypt.hash(password, 10);
     const newUser = await prisma.user.create({
       data: {
         username,
-        password,
-        roles: role,
-        googleId: undefined,
-        googleAccessToken: undefined,
-        googleRefreshToken: undefined,
-        employee: {
-          create: {
-            firstName,
-            lastName,
-            email,
-            phoneNumber,
-            position,
-            startDate: new Date(startDate), // Parse date
-            status,
-            salary,
-          },
-        },
+        password: hashedPassword,
+        roles,
+        isAdmin,
       },
     });
-    res.status(201).json(newUser);
+
+    // Exclude password from the response when sending the created user data
+    const { password: _, ...publicNewUser } = newUser; // Remove password from the response
+    res.status(201).json(publicNewUser);
   } catch (error) {
-    console.error('Error creating user and employee:', error);
-    res.status(500).json({ error: 'Failed to create user and employee', details: (error as Error).message });
+    console.error('Error creating user:', error);
+    res.status(500).json({ error: 'Failed to create user' });
   }
 });
 
-// Update an existing user and employee
+// Update an existing user
 router.put('/users/:id', async (req: Request, res: Response) => {
   const { id } = req.params;
-  const { username, password, role, firstName, lastName, email, phoneNumber, position, startDate, status, salary } = req.body;
+  const { username, password, roles, isAdmin } = req.body;
   try {
+    const hashedPassword = await bcrypt.hash(password, 10);
     const updatedUser = await prisma.user.update({
       where: { id: Number(id) },
       data: {
         username,
-        password,
-        roles: role,
-        employee: {
-          update: {
-            firstName,
-            lastName,
-            email,
-            phoneNumber,
-            position,
-            startDate: new Date(startDate), // Parse date
-            status,
-            salary,
-          },
-        },
+        password: hashedPassword,
+        roles,
+        isAdmin,
       },
     });
-    res.json(updatedUser);
+
+    // Exclude password from the response
+    const { password: _, ...publicUpdatedUser } = updatedUser;
+    res.json(publicUpdatedUser);
   } catch (error) {
-    console.error('Error updating user and employee:', error);
-    res.status(500).json({ error: 'Failed to update user and employee', details: (error as Error).message });
+    console.error('Error updating user:', error);
+    res.status(500).json({ error: 'Failed to update user' });
+  }
+});
+
+// Delete a user
+router.delete('/users/:id', async (req: Request, res: Response) => {
+  const { id } = req.params;
+  try {
+    await prisma.user.delete({
+      where: { id: Number(id) },
+    });
+    res.status(204).end();
+  } catch (error) {
+    console.error('Error deleting user:', error);
+    res.status(500).json({ error: 'Failed to delete user' });
   }
 });
 

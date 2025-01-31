@@ -1,4 +1,3 @@
-// filepath: /Users/jtwellspring/repos/Streamline-app/server/src/routes/protectedRoutes.ts
 import { Router } from 'express';
 import { ensureAuthenticated } from '../middleware/authMiddleware';
 

@@ -1,4 +1,4 @@
-// filepath: /Users/jtwellspring/repos/Streamline-app/server/next.config.ts
+
 import fs from 'fs';
 import path from 'path';
 import dotenv from 'dotenv';

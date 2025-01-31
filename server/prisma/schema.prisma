@@ -38,7 +38,7 @@ model Employee {
   email              String    @unique @db.VarChar(100)
   phoneNumber        String?   @db.VarChar(20)
   position           String    @db.VarChar(100)
-  startDate          DateTime
+  startDate          DateTime?
   salary             Decimal   @db.Decimal(10,2)
   status             EmployeeStatus @default(Active)
   address            String?   @db.VarChar(200)
@@ -582,8 +582,9 @@ enum EmployeeStatus {
 
 enum Role {
   Employee
-  Admin
-  ExternalUser
+  Manager
+  ProjectManager
+  Office
 }
 
 enum TimeEntryType {

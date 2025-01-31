@@ -24,8 +24,9 @@ export default function TestPage() {
         console.log("Auth Data:", authData); // Log auth data for debugging
         setAuthStatus(JSON.stringify(authData, null, 2));
       } catch (err) {
-        setHealthStatus(`Error: ${err.message}`);
-        setAuthStatus(`Error: ${err.message}`);
+        const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+        setHealthStatus(`Error: ${errorMessage}`);
+        setAuthStatus(`Error: ${errorMessage}`);
       } finally {
         setLoading(false);
       }
