@@ -14,7 +14,13 @@ export default function UserManagementLayout({ children }: { children: React.Rea
         }
     }, [status]);
 
-    if (status === 'loading') return <div>Loading...</div>;
+    if (status === 'loading') return (
+        <div className="flex items-center justify-center w-full h-full">
+            <div className="spinner-border animate-spin inline-block w-8 h-8 border-4 rounded-full" role="status">
+                <span className="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    );
 
     return (
         <div className={`${isDarkMode ? "dark" : "light"} flex bg-gray-50 text-gray-900 w-full min-h-screen`}>

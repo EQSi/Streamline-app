@@ -1,7 +1,7 @@
 'use client';
 
 import Sidebar from '@/app/(components)/Sidebar'; 
-import Navbar from '@/app/(components)/Navbar'; // Add this line
+import Navbar from '@/app/(components)/Navbar'; 
 import { useAppSelector } from '@/app/redux';
 import { useSession, SessionProvider } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
@@ -41,12 +41,16 @@ function DashboardLayoutContent({
     (state) => state.global.isDarkMode
   );
 
-  if (status === 'loading') {
-    return <div>Loading...</div>; // You can replace this with a loading spinner or component
-  }
+  if (status === 'loading') return (
+    <div className="flex items-center justify-center w-full h-full">
+        <div className="spinner-border animate-spin inline-block w-8 h-8 border-4 rounded-full" role="status">
+            <span className="visually-hidden">Loading...</span>
+        </div>
+    </div>
+  );
 
   if (status === 'unauthenticated') {
-    return null; // This will prevent the layout from rendering while redirecting
+    return null; 
   }
 
   return (

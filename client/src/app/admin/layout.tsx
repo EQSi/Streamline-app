@@ -7,6 +7,7 @@ import Navbar from '@/app/(components)/Navbar';
 import Sidebar from '@/app/(components)/Sidebar';
 import { useRouter } from 'next/navigation';
 
+
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
     return (
         <SessionProvider>
@@ -28,9 +29,13 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
         }
     }, [status]);
 
-    if (status === 'loading') {
-        return <div>Loading...</div>;  // Show a loading state while checking session
-    }
+    if (status === 'loading') return (
+        <div className="flex items-center justify-center w-full h-full">
+            <div className="spinner-border animate-spin inline-block w-8 h-8 border-4 rounded-full" role="status">
+                <span className="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    );
 
     if (status === 'unauthenticated') {
         return null;  // If unauthenticated, render nothing
@@ -42,7 +47,6 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
             <main className={`flex flex-col w-full h-full py-7 px-9 bg-gray-50 ${isSidebarCollapsed ? "md:pl-24" : "md:pl-72"}`}>
                 <Navbar />
                 {children}  {/* Render children components inside the admin layout */}
-                <user-management />  {/* Render the user management page */}
             </main>
         </div>
     );
