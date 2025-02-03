@@ -4,15 +4,34 @@ import React, { useState, useEffect } from 'react';
 import { Responsive, WidthProvider } from 'react-grid-layout';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
-
+import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 
 const ResponsiveGridLayout = WidthProvider(Responsive);
 
-const DashboardPage: React.FC = () => {
-  
-  const userId = 'exampleUserId';
+interface SessionUser {
+  id?: string;
+  name?: string | null;
+  email?: string | null;
+  image?: string | null;
+}
 
-  const [minimizedCards, setMinimizedCards] = useState<{ [key: string]: boolean }>({});
+const DashboardPage: React.FC = () => {
+  const { data: session, status } = useSession() as { data: { user: SessionUser } | null; status: string };
+  const router = useRouter();
+
+  useEffect(() => {
+    if (status === 'unauthenticated') {
+      router.push('/login');
+    }
+  }, [status, router]);
+
+  if (status === 'loading') {
+    return <div>Loading...</div>;
+  }
+
+  const userId = session?.user?.id || 'exampleUserId';
+
   const [layouts, setLayouts] = useState(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem(`dashboardLayouts-${userId}`);
@@ -34,12 +53,12 @@ const DashboardPage: React.FC = () => {
   const defaultLayouts = {
     lg: cards.map((card, i) => ({
       i: card.i,
-      x: i % 3,
-      y: Math.floor(i / 3),
-      w: 3,
-      h: 3,
-      minW: 2,
-      minH: 2
+      x: (i % 3) * 4,
+      y: Math.floor(i / 3) * 4,
+      w: 4,
+      h: 4,
+      minW: 3,
+      minH: 3
     }))
   };
 
@@ -51,13 +70,6 @@ const DashboardPage: React.FC = () => {
 
   const handleLayoutChange = (layout: any, allLayouts: any) => {
     setLayouts(allLayouts);
-  };
-
-  const toggleMinimize = (cardId: string) => {
-    setMinimizedCards(prev => ({
-      ...prev,
-      [cardId]: !prev[cardId]
-    }));
   };
 
   return (
@@ -77,18 +89,8 @@ const DashboardPage: React.FC = () => {
           {cards.map((card) => (
             <div key={card.i} className="bg-white rounded-lg shadow-md">
               <div className="p-4">
-                <div className="flex justify-between items-center mb-4">
-                  <h2 className="text-xl font-semibold">{card.name}</h2>
-                  <button 
-                    onClick={() => toggleMinimize(card.i)}
-                    className="text-gray-500 hover:text-gray-700"
-                  >
-                    {minimizedCards[card.i] ? 'Expand' : 'Minimize'}
-                  </button>
-                </div>
-                {!minimizedCards[card.i] && (
-                  <p className="text-gray-700 whitespace-pre-line">{card.content}</p>
-                )}
+                <h2 className="text-xl font-semibold mb-4">{card.name}</h2>
+                <p className="text-gray-700 whitespace-pre-line">{card.content}</p>
               </div>
             </div>
           ))}

@@ -1,8 +1,9 @@
-import { Router, Request, Response } from 'express';
+import express, { Router, Request, Response } from 'express';
 import prisma from '../prismaClient'; // Ensure you have a Prisma client setup
 import bcrypt from 'bcrypt'; // Ensure you have bcrypt installed
 
-const router = Router();
+const router = express.Router();
+
 
 // Get all users
 router.get('/users', async (req: Request, res: Response) => {
@@ -22,27 +23,38 @@ router.get('/users', async (req: Request, res: Response) => {
   }
 });
 
-// Get a specific user by ID
-router.get('/users/:id', async (req: Request, res: Response) => {
-  const { id } = req.params;
+router.get('/users/:id', async (req: Request, res: Response): Promise<void> => {
   try {
+    const { id } = req.params;
+
     const user = await prisma.user.findUnique({
-      where: { id: parseInt(id, 10) }, // Convert id to integer
+      where: { id: Number(id) },
+      include: { employee: true },
     });
 
-    if (user) {
-      // Exclude password from the response
-      const { password, ...publicUserData } = user;
-      res.json(publicUserData);
-    } else {
+    if (!user) {
       res.status(404).json({ error: 'User not found' });
+      return;
     }
+
+    if (!user.employee) {
+      res.status(404).json({ error: 'Employee record not found for this user' });
+      return;
+    }
+
+    res.json({
+      id: user.id,
+      username: user.username,
+      roles: user.roles,
+      isAdmin: user.isAdmin,
+      firstName: user.employee.firstName,
+      lastName: user.employee.lastName,
+    });
   } catch (error) {
     console.error('Error fetching user:', error);
     res.status(500).json({ error: 'Failed to fetch user' });
   }
 });
-
 
 
 // Create a new user

@@ -1,6 +1,6 @@
 import type { Config } from "tailwindcss";
 import { createThemes } from "tw-colors";
-import colors from "tailwindcss/colors";
+import colors, { green, orange, yellow } from "tailwindcss/colors";
 import { dark } from "@mui/material/styles/createPalette";
 
 const baseColors = [
@@ -66,6 +66,10 @@ export default {
       colors: {
         background: "var(--background)",
         foreground: "var(--foreground)",
+        redcustom: "#EB5047",
+        orangecustom: "#E6723D",
+        yellowcustom: "#EBD56D",
+        greencustom: "#B9EB7E"
       },
     },
   },

@@ -12,15 +12,28 @@ const LoginForm = () => {
     const [formData, setFormData] = useState({ username: "", password: "" });
     const [error, setError] = useState("");
 
+    const validateInput = (input: string) => {
+        const regex = /^[a-zA-Z0-9_]*$/;
+        return regex.test(input);
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError("");
+
+        if (!validateInput(formData.username) || !validateInput(formData.password)) {
+            setError("Invalid input. Only alphanumeric characters and underscores are allowed.");
+            return;
+        }
 
         const result = await signIn("credentials", {
             redirect: false,
             username: formData.username,
             password: formData.password,
+            csrfToken: await fetchCsrfToken(), // Fetch CSRF token
         });
+
+        console.log("Sign In Result:", result);
 
         if (result?.error) {
             setError("Invalid username or password");
@@ -31,6 +44,12 @@ const LoginForm = () => {
 
     const handleGoogleLogin = async () => {
         signIn("google", { callbackUrl: "https://localhost:3000/dashboard" });
+    };
+
+    const fetchCsrfToken = async () => {
+        const res = await fetch("/api/auth/csrf");
+        const data = await res.json();
+        return data.csrfToken;
     };
 
     return (
