@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef } from "react";
-import { combineReducers, configureStore } from "@reduxjs/toolkit";
+import { combineReducers, configureStore, createSlice, PayloadAction } from "@reduxjs/toolkit";
 import {
   TypedUseSelectorHook,
   useDispatch,
@@ -50,10 +50,42 @@ const persistConfig = {
   storage,
   whitelist: ["global"],
 };
+
+/* EMPLOYEE SLICE */
+interface EmployeeState {
+  firstName: string;
+  lastName: string;
+  email: string;
+  // Add other fields as necessary
+}
+
+const initialState: EmployeeState = {
+  firstName: '',
+  lastName: '',
+  email: '',
+  // Initialize other fields as necessary
+};
+
+const employeeSlice = createSlice({
+  name: 'employee',
+  initialState,
+  reducers: {
+    setEmployee(state, action: PayloadAction<EmployeeState>) {
+      return action.payload;
+    },
+    // Add other reducers as necessary
+  },
+});
+
+export const { setEmployee } = employeeSlice.actions;
+
+/* ROOT REDUCER */
 const rootReducer = combineReducers({
   global: globalReducer,
   [api.reducerPath]: api.reducer,
+  employee: employeeSlice.reducer,
 });
+
 const persistedReducer = persistReducer(persistConfig, rootReducer);
 
 /* REDUX STORE */

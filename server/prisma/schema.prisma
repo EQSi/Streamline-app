@@ -19,9 +19,9 @@ model User {
   username           String    @unique @db.VarChar(100)
   password           String
   roles              Role      @default(Employee)
-  googleId           String    @unique
-  googleAccessToken  String
-  googleRefreshToken String
+  googleId           String?    @unique
+  googleAccessToken  String?
+  googleRefreshToken String?
   isAdmin            Boolean   @default(false)
   employee           Employee?
   createdAt          DateTime  @default(now())
@@ -38,7 +38,7 @@ model Employee {
   email              String    @unique @db.VarChar(100)
   phoneNumber        String?   @db.VarChar(20)
   position           String    @db.VarChar(100)
-  startDate          DateTime
+  startDate          DateTime?
   salary             Decimal   @db.Decimal(10,2)
   status             EmployeeStatus @default(Active)
   address            String?   @db.VarChar(200)
@@ -55,6 +55,8 @@ model Employee {
   companyRatings     CompanyRating[]
   receipts           Receipt[]
   contacts           Contact[]
+  notifications      Notification[]
+  createdDocuments   Document[] @relation("EmployeeCreatedDocuments")
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
 
@@ -171,6 +173,7 @@ model Job {
   receipts         Receipt[]
   contacts         Contact[]
   timeEntries      TimeEntry[]
+  documents        Document[]
 
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
@@ -204,6 +207,7 @@ model Location {
   city          String    @db.VarChar(100)
   state         String    @db.VarChar(50)
   zipCode       String    @db.VarChar(10)
+  company       Company[]
   jobs          Job[]
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
@@ -335,11 +339,8 @@ model Company {
   name             String        @db.VarChar(100)
   type             CompanyType
   email            String?       @db.VarChar(100)
-  phone            String?       @db.VarChar(20)
-  address          String?       @db.VarChar(200)
-  city             String?       @db.VarChar(100)
-  state            String?       @db.VarChar(50)
-  zipCode          String?       @db.VarChar(10)
+  locationId       Int?
+  location         Location?    @relation(fields: [locationId], references: [id])
   divisions        Division[]
   ratings          CompanyRating[]
   contracts        Contract[]
@@ -350,8 +351,6 @@ model Company {
 
   @@index([name])
   @@index([type])
-  @@index([city])
-  @@index([state])
 }
 
 model Division {
@@ -395,7 +394,7 @@ model Contract {
   endDate          DateTime?
   status           ContractStatus @default(Active)
   rates            ContractRate[]
-  documents        Json?         // Store document URLs
+  documents        Document[]    // Store document URLs
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
 
@@ -443,6 +442,64 @@ model Contact {
   @@index([employeeId])
   @@index([firstName])
   @@index([lastName])
+}
+
+model Setting {
+  id          Int             @id @default(autoincrement())
+  key         String          @unique
+  value       String          @db.Text
+  category    SettingCategory
+  isEncrypted Boolean         @default(false)
+  description String?         @db.Text
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@index([category])
+}
+
+model AuditLog {
+  id          Int      @id @default(autoincrement())
+  entityType  String   // Table name
+  entityId    Int      // Record ID
+  action      String   // Create/Update/Delete
+  userId      Int      // Who made the change
+  changes     Json     // Before/After values
+  createdAt   DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([userId])
+}
+
+model Document {
+  id          Int      @id @default(autoincrement())
+  title       String   @db.VarChar(100)
+  type        DocumentType
+  url         String
+  fileSize    Int
+  mimeType    String   @db.VarChar(50)
+  job         Job?     @relation(fields: [jobId], references: [id])
+  jobId       Int?
+  contract    Contract? @relation(fields: [contractId], references: [id])
+  contractId  Int?
+  createdBy   Employee @relation("EmployeeCreatedDocuments", fields: [employeeId], references: [id])
+  employeeId  Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([type])
+}
+
+model Notification {
+  id          Int       @id @default(autoincrement())
+  type        NotificationType
+  title       String    @db.VarChar(100)
+  message     String    @db.Text
+  isRead      Boolean   @default(false)
+  employee    Employee  @relation(fields: [employeeId], references: [id])
+  employeeId  Int
+  createdAt   DateTime  @default(now())
+
+  @@index([employeeId, isRead])
 }
 
 enum ContactType {
@@ -525,8 +582,9 @@ enum EmployeeStatus {
 
 enum Role {
   Employee
-  Admin
-  ExternalUser
+  Manager
+  ProjectManager
+  Office
 }
 
 enum TimeEntryType {
@@ -559,4 +617,30 @@ enum EstimateStatus {
   Accepted
   Rejected
   Revised
+}
+
+enum SettingCategory {
+  General
+  Notifications
+  Security
+  Integration
+  Billing
+  Company
+}
+
+enum DocumentType {
+  Contract
+  Invoice
+  Receipt
+  Proposal
+  Certificate
+  Other
+}
+
+enum NotificationType {
+  TaskAssigned
+  JobUpdate
+  CertificationExpiring
+  TimeApproval
+  SystemAlert
 }

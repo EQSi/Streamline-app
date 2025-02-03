@@ -7,9 +7,8 @@ export default function Home() {
   const router = useRouter();
 
   useEffect(() => {
-    // Redirect to login page
-    router.push('/login');
+    router.push('https://localhost:3000/login');
   }, [router]);
 
-  return null; // Render nothing while redirecting
+  return null; 
 }

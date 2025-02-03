@@ -2,13 +2,14 @@
 
 import {useAppDispatch, useAppSelector} from '@/app/redux';
 import React from 'react'
-import {Calendar, Contact, Forklift, Layout, LayoutList, LucideIcon, Menu, SquareChartGantt, StickyNote, Truck, User, Users, Wrench } from 'lucide-react'
+import {Calendar, Contact, Forklift, Layout, LayoutList, LucideIcon, Menu, SquareChartGantt, Truck, User, Users, Wrench, UserPen } from 'lucide-react'
 import Link from 'next/link'
 import { setIsSidebarCollapsed } from '@/state';
 import { usePathname } from 'next/navigation';
 import path from 'path';
 import Image from "next/image";
 import Logo from "@/assets/logo.png";
+import Logo3 from "@/assets/logo2.png";
 import { Stick } from 'next/font/google';
 
 
@@ -35,7 +36,7 @@ const SidebarLink = ({
       hover:text-blue-500 hover:bg-blue-100 gap-3 transition-colors ${
         isActive ? "bg-blue-200 text-white" : ""
         }
-      }`}
+      } figtree-font`}
       >
         <Icon className="w-6 h-6 !text-gray-700" />
 
@@ -63,7 +64,7 @@ const Sidebar = () => {
 
   const sidebarClassNames = `fixed flex flex-col ${
         isSidebarCollapsed ? "w-0 md:w-16" : "w-72 md:w-64"
-      } bg-white transition-all duration-300 overflow-hidden h-full shadow-md z-40`; 
+      } bg-white transition-all duration-300 overflow-hidden h-full shadow-md z-40 figtree-font`; 
 
   return (
     <div className={sidebarClassNames}>
@@ -74,21 +75,16 @@ const Sidebar = () => {
       >
       <div className="min-w-[27px] min-h-[27px]">
         <Image
-        src={Logo}
+        src={isSidebarCollapsed ? Logo : Logo3}
         alt="streamline-logo"
-        width={27}
-        height={27}
-        className="rounded w-8"
+        width={isSidebarCollapsed ? 27 : 108}
+        height={isSidebarCollapsed ? 27 : 54}
+        quality={100}
+        className={`rounded ${isSidebarCollapsed ? "w-8 h-8" : "w-32 h-8"}`}
         />
       </div>
 
-      <h1
-        className={`${
-        isSidebarCollapsed ? "hidden" : "block"
-        } text-[20px] rubik-vinyl-regular text-gray-700`}
-      >
-        Streamline
-      </h1>
+ 
       
       <button 
         className="md:hidden px-3 py-3 bg-gray-100 rounded-full hover:bg-blue-100" 
@@ -152,6 +148,12 @@ const Sidebar = () => {
         href="/reports" 
         icon={SquareChartGantt} 
         label="Reports" 
+        isCollapsed={isSidebarCollapsed}
+      />
+      <SidebarLink 
+        href="/admin" 
+        icon={UserPen} 
+        label="Admin" 
         isCollapsed={isSidebarCollapsed}
       />
       </div>
