@@ -18,11 +18,10 @@ model User {
   id                 Int       @id @default(autoincrement())
   username           String    @unique @db.VarChar(100)
   password           String
-  roles              Role      @default(Employee)
-  googleId           String?    @unique
+  roles              Role      @default(EMPLOYEE)
+  googleId           String?   @unique
   googleAccessToken  String?
   googleRefreshToken String?
-  isAdmin            Boolean   @default(false)
   employee           Employee?
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
@@ -37,7 +36,7 @@ model Employee {
   lastName           String    @db.VarChar(50)
   email              String    @unique @db.VarChar(100)
   phoneNumber        String?   @db.VarChar(20)
-  position           String    @db.VarChar(100)
+  position           Position  @default(ProjectManager)
   startDate          DateTime?
   salary             Decimal   @db.Decimal(10,2)
   status             EmployeeStatus @default(Active)
@@ -581,10 +580,19 @@ enum EmployeeStatus {
 }
 
 enum Role {
-  Employee
-  Manager
+  ADMIN
+  MANAGER
+  EMPLOYEE
+}
+
+enum Position {
   ProjectManager
-  Office
+  FieldManager
+  FieldTechnicianL1
+  FieldTechnicianL2
+  FieldTechnicianL3
+  OfficeStaff
+  Owner
 }
 
 enum TimeEntryType {

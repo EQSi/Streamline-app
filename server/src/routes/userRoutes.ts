@@ -1,4 +1,4 @@
-import express, { Router, Request, Response } from 'express';
+import express, { Request, Response } from 'express';
 import prisma from '../prismaClient'; // Ensure you have a Prisma client setup
 import bcrypt from 'bcrypt'; // Ensure you have bcrypt installed
 
@@ -6,7 +6,7 @@ const router = express.Router();
 
 
 // Get all users
-router.get('/users', async (req: Request, res: Response) => {
+router.get('/users', async (_: Request, res: Response) => {
   try {
     const users = await prisma.user.findMany();
 
@@ -46,7 +46,6 @@ router.get('/users/:id', async (req: Request, res: Response): Promise<void> => {
       id: user.id,
       username: user.username,
       roles: user.roles,
-      isAdmin: user.isAdmin,
       firstName: user.employee.firstName,
       lastName: user.employee.lastName,
     });
@@ -59,15 +58,19 @@ router.get('/users/:id', async (req: Request, res: Response): Promise<void> => {
 
 // Create a new user
 router.post('/users', async (req: Request, res: Response) => {
-  const { username, password, roles, isAdmin } = req.body;
+  const { username, password, roles } = req.body;
   try {
+    const existingUser = await prisma.user.findUnique({ where: { username } });
+    if (existingUser) {
+      res.status(409).json({ error: 'Username already exists' });
+      return;
+    }
     const hashedPassword = await bcrypt.hash(password, 10);
     const newUser = await prisma.user.create({
       data: {
         username,
         password: hashedPassword,
         roles,
-        isAdmin,
       },
     });
 
@@ -83,7 +86,7 @@ router.post('/users', async (req: Request, res: Response) => {
 // Update an existing user
 router.put('/users/:id', async (req: Request, res: Response) => {
   const { id } = req.params;
-  const { username, password, roles, isAdmin } = req.body;
+  const { username, password, roles } = req.body;
   try {
     const hashedPassword = await bcrypt.hash(password, 10);
     const updatedUser = await prisma.user.update({
@@ -92,7 +95,6 @@ router.put('/users/:id', async (req: Request, res: Response) => {
         username,
         password: hashedPassword,
         roles,
-        isAdmin,
       },
     });
 

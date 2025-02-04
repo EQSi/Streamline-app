@@ -1,11 +1,11 @@
 import { Router, Request, Response } from 'express';
 import prisma from '../prismaClient'; // Ensure you have a Prisma client setup
-import { EmployeeStatus } from '@prisma/client'; // Import the enum from Prisma
+import { EmployeeStatus, Position } from '@prisma/client'; // Import the enums from Prisma
 
 const router = Router();
 
 // Get all employees
-router.get('/employees', async (req: Request, res: Response) => {
+router.get('/employees', async (_req: Request, res: Response) => {
     try {
         const employees = await prisma.employee.findMany({
             include: {
@@ -42,12 +42,13 @@ router.get('/employees/:id', async (req: Request, res: Response) => {
 
 // Create a new employee
 router.post('/employees', async (req: Request, res: Response) => {
-    const { firstName, lastName, email, phoneNumber, position, startDate, status, userId, salary } = req.body as {
+    const { id, firstName, lastName, email, phoneNumber, position, startDate, status, userId, salary } = req.body as {
+        id?: number;
         firstName: string;
         lastName: string;
         email: string;
         phoneNumber: string;
-        position: string;
+        position: Position;
         startDate: string; // Changed to string to parse date
         status: EmployeeStatus;
         userId: number;
