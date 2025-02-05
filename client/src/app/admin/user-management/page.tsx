@@ -1,5 +1,6 @@
 'use client';
 
+import bcrypt from 'bcryptjs';
 import { useRouter } from 'next/navigation';
 import React, { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
@@ -38,6 +39,11 @@ const formatPosition = (position: string = ""): string => {
     return position.replace(/([A-Z])/g, ' $1').trim();
 };
 
+// Utility to hash a password using bcrypt
+async function hashPassword(password: string): Promise<string> {
+    return bcrypt.hash(password, 10);
+}
+
 export default function UserManagementPage() {
     const router = useRouter();
     const { data: session } = useSession();
@@ -61,15 +67,6 @@ export default function UserManagementPage() {
     });
     const [showAddEmployeeForm, setShowAddEmployeeForm] = useState(false);
     const [showActiveEmployees, setShowActiveEmployees] = useState(true);
-
-    // Utility to hash a password using SHA-256
-    async function hashPassword(password: string): Promise<string> {
-        const encoder = new TextEncoder();
-        const data = encoder.encode(password);
-        const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-        const hashArray = Array.from(new Uint8Array(hashBuffer));
-        return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-    }
 
     const handleShowAddEmployeeForm = () => {
         setShowAddEmployeeForm(!showAddEmployeeForm);
@@ -133,7 +130,7 @@ export default function UserManagementPage() {
         if (!session?.accessToken) return;
 
         try {
-            // Hash the password before sending
+            // Hash the password before sending using bcrypt
             const hashedPassword = await hashPassword(newEmployee.password);
 
             const newUser = {

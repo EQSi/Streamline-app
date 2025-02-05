@@ -55,7 +55,7 @@ const SidebarLink = ({
 const Sidebar = () => {
   const disbatch = useAppDispatch();
   const isSidebarCollapsed = useAppSelector(
-    (state) => state.global.isSidebarCollapsed
+    (state: { global: { isSidebarCollapsed: boolean } }) => state.global.isSidebarCollapsed
   );
 
   const toggleSidebar = () => {

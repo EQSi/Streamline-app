@@ -393,7 +393,7 @@ model Contract {
   endDate          DateTime?
   status           ContractStatus @default(Active)
   rates            ContractRate[]
-  documents        Document[]    // Store document URLs
+  documents        Document[]    
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
 

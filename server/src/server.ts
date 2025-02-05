@@ -7,6 +7,7 @@ import dotenv from 'dotenv';
 import { authenticateToken } from './middleware/authMiddleware'; // Import the JWT authentication middleware
 import authRoutes from './routes/authRoutes';
 import userRoutes from './routes/userRoutes';
+import companyRoutes from './routes/companyRoutes';
 import employeeRoutes from './routes/employeeRoutes';
 
 dotenv.config();
@@ -33,6 +34,7 @@ app.use(express.json());
 app.use('/api/auth', authRoutes);
 
 app.use('/api', [authenticateToken], userRoutes);  // Protect this route with JWT
+app.use('/api', [authenticateToken], companyRoutes); 
 app.use('/api', [authenticateToken], employeeRoutes);   // Protect employee routes with JWT
 
 // HTTPS server setup

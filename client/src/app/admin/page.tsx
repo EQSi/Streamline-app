@@ -17,9 +17,18 @@ export default function AdminLandingPage() {
         router.push('/admin/settings');
     };
 
+    const handleBack = () => {
+        router.back();     
+    };
+
     return (
         <div className="flex flex-col h-screen">
-            <header className="p-4 bg-gray-150 w-full">
+            <div>
+                <button onClick={handleBack} className="text-blue-500 hover:underline">
+                    &larr; Dashboard
+                </button>
+            </div>
+            <header className="p-2 bg-gray-150 w-full">
                 <h1 className="text-2xl font-bold">Admin Dashboard</h1>
             </header>
             <main className="flex flex-col items-start p-8 flex-grow">
