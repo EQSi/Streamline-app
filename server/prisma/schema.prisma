@@ -339,11 +339,11 @@ model Company {
   type             CompanyType
   email            String?       @db.VarChar(100)
   locationId       Int?
-  location         Location?    @relation(fields: [locationId], references: [id])
+  location         Location?     @relation(fields: [locationId], references: [id])
   divisions        Division[]
   ratings          CompanyRating[]
   contracts        Contract[]
-  jobs             Job[]         // For customer relation
+  jobs             Job[]         
   contacts         Contact[]
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt

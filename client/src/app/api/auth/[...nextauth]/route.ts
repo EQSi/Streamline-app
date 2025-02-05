@@ -33,7 +33,6 @@ export const authOptions = {
             },
               { httpsAgent: agent, withCredentials: true }
             );
-            const decodedToken = jwtDecode<DecodedToken>(response.data.token);
 
           console.log("Login Response:", response.data);
 
@@ -48,7 +47,12 @@ export const authOptions = {
 
           return null;
         } catch (error) {
-          console.error("Authentication failed:", error);
+          const err = error as any;
+          if (err.response && err.response.status === 401) {
+            console.error("Invalid credentials:", err.response.data);
+          } else {
+            console.error("Authentication failed:", err);
+          }
           return null;
         }
       },

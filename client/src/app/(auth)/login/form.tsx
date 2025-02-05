@@ -30,7 +30,7 @@ const LoginForm = () => {
             redirect: false,
             username: formData.username,
             password: formData.password,
-            csrfToken: await fetchCsrfToken(), // Fetch CSRF token
+            csrfToken: await fetchCsrfToken(), 
         });
 
         console.log("Sign In Result:", result);
@@ -112,7 +112,6 @@ const LoginForm = () => {
                         </div>
                     </div>
 
-                    {/* Submit Button */}
                     <div className="flex justify-center">
                         <button
                             type="submit"

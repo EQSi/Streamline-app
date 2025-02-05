@@ -114,6 +114,12 @@ const Sidebar = () => {
         label="Jobs" 
         isCollapsed={isSidebarCollapsed} 
       />
+            <SidebarLink 
+        href="/company" 
+        icon={Wrench} 
+        label="Companies" 
+        isCollapsed={isSidebarCollapsed} 
+      />
       <SidebarLink 
         href="/customers" 
         icon={Users} 
