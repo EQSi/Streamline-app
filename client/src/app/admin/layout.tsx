@@ -38,7 +38,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
     );
 
     if (status === 'unauthenticated') {
-        return null;  // If unauthenticated, render nothing
+        return null;  
     }
 
     return (
@@ -46,7 +46,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
             <Sidebar />
             <main className={`flex flex-col w-full h-full py-7 px-9 bg-gray-50 ${isSidebarCollapsed ? "md:pl-24" : "md:pl-72"}`}>
                 <Navbar />
-                {children}  {/* Render children components inside the admin layout */}
+                {children}  
             </main>
         </div>
     );

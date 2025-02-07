@@ -22,7 +22,7 @@ export default function AdminLandingPage() {
     };
 
     return (
-        <div className="flex flex-col h-screen">
+        <div className="p-3 flex flex-col h-screen">
             <div>
                 <button onClick={handleBack} className="text-blue-500 hover:underline">
                     &larr; Dashboard
@@ -31,7 +31,7 @@ export default function AdminLandingPage() {
             <header className="p-2 bg-gray-150 w-full">
                 <h1 className="text-2xl font-bold">Admin Dashboard</h1>
             </header>
-            <main className="flex flex-col items-start p-8 flex-grow">
+            <main className="flex flex-col items-start p-4 flex-grow">
                 <div className="space-y-4">
                     <button
                         onClick={navigateToUserManagement}

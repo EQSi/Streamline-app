@@ -252,38 +252,32 @@ const AddDivisionForm: React.FC<{ companyId: number; onAddDivision: (companyId: 
 };
 
 const CompaniesPage: React.FC = () => {
-    const router = useRouter();
     const { data: session } = useSession();
+    const router = useRouter();
     const [companies, setCompanies] = useState<Company[]>([]);
-    const [showAddCompanyForm, setShowAddCompanyForm] = useState(false);
     const [expandedCompanyIds, setExpandedCompanyIds] = useState<number[]>([]);
-
+    const [showAddCompanyForm, setShowAddCompanyForm] = useState(false);
+  
     useEffect(() => {
-        const fetchCompanies = async () => {
-            if (!session || !(session as any).accessToken) {
-                console.error('No access token found');
-                return;
-            }
-            try {
-                const response = await axios.get('https://localhost:8080/api/companies', {
-                    headers: {
-                        Authorization: `Bearer ${(session as any).accessToken}`,
-                        'Content-Type': 'application/json',
-                    },
-                    withCredentials: true,
-                });
-                // Ensure each company uses the "id" field across everything.
-                const companiesWithId: Company[] = response.data.map((company: any) => ({
-                    ...company,
-                    id: company.id ?? company.companyId,
-                }));
-                setCompanies(companiesWithId);
-            } catch (error) {
-                console.error('Failed to fetch companies', error);
-            }
-        };
-
-        fetchCompanies();
+      const fetchCompanies = async () => {
+        if (!session || !(session as any).accessToken) {
+          console.error('No access token found');
+          return;
+        }
+  
+        try {
+          const response = await axiosInstance.get('/companies', {
+            headers: {
+              Authorization: `Bearer ${(session as any).accessToken}`,
+            },
+          });
+          setCompanies(response.data);
+        } catch (error) {
+          console.error('Failed to fetch companies:', error);
+        }
+      };
+  
+      fetchCompanies();
     }, [session]);
 
     const toggleAddCompanyForm = () => setShowAddCompanyForm((prev) => !prev);

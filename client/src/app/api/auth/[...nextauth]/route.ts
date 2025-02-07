@@ -37,9 +37,12 @@ export const authOptions = {
           console.log("Login Response:", response.data);
 
           if (response.data) {
-            const decodedToken = jwtDecode<DecodedToken>(response.data.token);
+            if (!response.data.accessToken) {
+              throw new Error("Access token is missing in the response");
+            }
+            const decodedToken = jwtDecode<DecodedToken>(response.data.accessToken);
             return {
-              token: response.data.token,
+              token: response.data.accessToken,
               id: decodedToken.userId,
               username: credentials.username,
               refreshToken: response.data.refreshToken, // Assuming the response contains a refreshToken

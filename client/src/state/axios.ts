@@ -12,7 +12,7 @@ axiosInstance.interceptors.response.use(
     if (error.response?.status === 401) {
       try {
         const response = await axios.post('/api/auth/refresh', {
-          refreshToken: localStorage.getItem('refreshToken'),
+          token: localStorage.getItem('refreshToken'),
         });
         if (response.data.accessToken) {
           error.config.headers['Authorization'] = `Bearer ${response.data.accessToken}`;

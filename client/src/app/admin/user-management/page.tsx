@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs';
 import { useRouter } from 'next/navigation';
 import React, { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
+import axiosInstance from '@/state/axios';
 
 interface Employee {
     id: number;
@@ -81,20 +82,14 @@ export default function UserManagementPage() {
 
         const fetchEmployees = async () => {
             try {
-                const res = await fetch('https://localhost:8080/api/employees', {
-                    credentials: 'include',
+                const res = await axiosInstance.get('/employees', {
                     headers: {
                         "Authorization": `Bearer ${session.accessToken}`,
                         "Content-Type": "application/json",
                         "Cache-Control": "no-store",
                     },
                 });
-                if (res.ok) {
-                    const data = await res.json();
-                    setEmployees(data);
-                } else {
-                    throw new Error('Failed to fetch employees');
-                }
+                setEmployees(res.data);
             } catch (error) {
                 console.error('Error fetching employees:', error);
             }
@@ -102,20 +97,14 @@ export default function UserManagementPage() {
 
         const fetchUsers = async () => {
             try {
-                const res = await fetch('https://localhost:8080/api/users', {
-                    credentials: 'include',
+                const res = await axiosInstance.get('/users', {
                     headers: {
                         "Authorization": `Bearer ${session.accessToken}`,
                         "Content-Type": "application/json",
                         "Cache-Control": "no-store",
                     },
                 });
-                if (res.ok) {
-                    const data = await res.json();
-                    setUsers(data);
-                } else {
-                    throw new Error('Failed to fetch users');
-                }
+                setUsers(res.data);
             } catch (error) {
                 console.error('Error fetching users:', error);
             }
@@ -123,7 +112,7 @@ export default function UserManagementPage() {
 
         fetchEmployees();
         fetchUsers();
-    }, [session?.accessToken]);
+    }, [session]);
 
     const handleAddEmployee = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -139,56 +128,42 @@ export default function UserManagementPage() {
                 role: newEmployee.role,
             };
 
-            const userRes = await fetch('https://localhost:8080/api/users', {
-                method: 'POST',
+            const userRes = await axiosInstance.post('/users', newUser, {
                 headers: { 
                     'Content-Type': 'application/json',
                     "Authorization": `Bearer ${(session as any).accessToken}`,
                 },
-                body: JSON.stringify(newUser),
-                credentials: 'include',
             });
 
-            if (userRes.ok) {
-                const createdUser = await userRes.json();
-                const { username, password, role, ...employeeData } = newEmployee;
-                const employeeToAdd = { ...employeeData, userId: createdUser.id };
+            const createdUser = userRes.data;
+            const { username, password, role, ...employeeData } = newEmployee;
+            const employeeToAdd = { ...employeeData, userId: createdUser.id };
 
-                const res = await fetch('https://localhost:8080/api/employees', {
-                    method: 'POST',
-                    headers: { 
-                        'Content-Type': 'application/json',
-                        "Authorization": `Bearer ${(session as any).accessToken}`,
-                        "Cache-Control": "no-store",
-                    },
-                    body: JSON.stringify(employeeToAdd),
-                    credentials: 'include',
-                });
+            const res = await axiosInstance.post('/employees', employeeToAdd, {
+                headers: { 
+                    'Content-Type': 'application/json',
+                    "Authorization": `Bearer ${(session as any).accessToken}`,
+                    "Cache-Control": "no-store",
+                },
+            });
 
-                if (res.ok) {
-                    const addedEmployee = await res.json();
-                    setEmployees((prevEmployees) => [...prevEmployees, addedEmployee]);
-                    setUsers((prevUsers) => [...prevUsers, createdUser]);
-                    setNewEmployee({
-                        firstName: "",
-                        lastName: "",
-                        email: "",
-                        phoneNumber: "",
-                        position: "OfficeStaff",
-                        startDate: "",
-                        status: "Active",
-                        userId: 0,
-                        username: "",
-                        password: "",
-                        role: "EMPLOYEE",
-                        salary: 0,
-                    });
-                } else {
-                    throw new Error('Failed to add employee');
-                }
-            } else {
-                throw new Error('Failed to create user');
-            }
+            const addedEmployee = res.data;
+            setEmployees((prevEmployees) => [...prevEmployees, addedEmployee]);
+            setUsers((prevUsers) => [...prevUsers, createdUser]);
+            setNewEmployee({
+                firstName: "",
+                lastName: "",
+                email: "",
+                phoneNumber: "",
+                position: "OfficeStaff",
+                startDate: "",
+                status: "Active",
+                userId: 0,
+                username: "",
+                password: "",
+                role: "EMPLOYEE",
+                salary: 0,
+            });
         } catch (error) {
             console.error('Error adding employee:', error);
             alert('Error adding employee, please try again');
@@ -205,44 +180,30 @@ export default function UserManagementPage() {
                 startDate: new Date(employee.startDate).toISOString(),
             };
     
-            const res = await fetch(`https://localhost:8080/api/employees/${employee.id}`, {
-                method: 'PUT',
+            const res = await axiosInstance.put(`/employees/${employee.id}`, updatedEmployeeData, {
                 headers: { 
                     'Content-Type': 'application/json',
                     "Authorization": `Bearer ${(session as any).accessToken}`,
                     "Cache-Control": "no-store",
                 },
-                body: JSON.stringify(updatedEmployeeData),
-                credentials: 'include',
             });
     
-            if (res.ok) {
-                const updatedEmployee = await res.json();
-                setEmployees((prevEmployees) =>
-                    prevEmployees.map((emp) => (emp.id === updatedEmployee.id ? updatedEmployee : emp))
-                );
-                // If a new password is provided, update the user password
-                if (editingPassword.trim() !== "") {
-                    const hashedPassword = await hashPassword(editingPassword);
-                    const userUpdateRes = await fetch(`https://localhost:8080/api/users/${employee.userId}`, {
-                        method: 'PUT',
-                        headers: { 
-                            'Content-Type': 'application/json',
-                            "Authorization": `Bearer ${(session as any).accessToken}`,
-                        },
-                        body: JSON.stringify({ password: hashedPassword }),
-                        credentials: 'include',
-                    });
-    
-                    if (!userUpdateRes.ok) {
-                        throw new Error('Failed to update user password');
-                    }
-                }
-                setEditingEmployeeId(null);
-                setEditingPassword("");
-            } else {
-                throw new Error('Failed to update employee');
+            const updatedEmployee = res.data;
+            setEmployees((prevEmployees) =>
+                prevEmployees.map((emp) => (emp.id === updatedEmployee.id ? updatedEmployee : emp))
+            );
+            // If a new password is provided, update the user password
+            if (editingPassword.trim() !== "") {
+                const hashedPassword = await hashPassword(editingPassword);
+                await axiosInstance.put(`/users/${employee.userId}`, { password: hashedPassword }, {
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        "Authorization": `Bearer ${(session as any).accessToken}`,
+                    },
+                });
             }
+            setEditingEmployeeId(null);
+            setEditingPassword("");
         } catch (error) {
             console.error('Error updating employee:', error);
             alert('Error updating employee, please try again');
@@ -253,9 +214,7 @@ export default function UserManagementPage() {
         if (!session?.accessToken) return;
 
         try {
-            const res = await fetch(`https://localhost:8080/api/employees/${id}`, {
-                method: 'DELETE',
-                credentials: 'include',
+            await axiosInstance.delete(`/employees/${id}`, {
                 headers: {
                     "Authorization": `Bearer ${(session as any).accessToken}`,
                     "Content-Type": "application/json",
@@ -263,11 +222,7 @@ export default function UserManagementPage() {
                 },
             });
 
-            if (res.ok) {
-                setEmployees(employees.filter(emp => emp.id !== id));
-            } else {
-                throw new Error('Failed to delete employee');
-            }
+            setEmployees(employees.filter(emp => emp.id !== id));
         } catch (error) {
             console.error('Error deleting employee:', error);
         }

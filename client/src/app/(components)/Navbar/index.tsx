@@ -5,6 +5,7 @@ import { setIsSidebarCollapsed } from "@/state";
 import { Search, Settings, Bell, LogOut, ArrowRightFromLineIcon, ArrowLeftFromLineIcon } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { useSession, signOut } from "next-auth/react";
+import axiosInstance from "@/state/axios";
 
 const Navbar = () => {
   const dispatch = useAppDispatch();
@@ -17,7 +18,7 @@ const Navbar = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    console.log("Session Data:", session);
+    if (!session) return;
 
     const fetchUserData = async () => {
       if (!session?.user?.id) {
@@ -26,19 +27,17 @@ const Navbar = () => {
       }
 
       try {
-        const response = await fetch(`https://localhost:8080/api/users/${session.user.id}`, {
-          credentials: "include",
+        const response = await axiosInstance.get(`/users/${session.user.id}`, {
           headers: {
-            "Content-Type": "application/json",
             Authorization: `Bearer ${session.accessToken}`,
           },
         });
 
-        if (!response.ok) {
+        if (!response.data) {
           throw new Error("Failed to fetch user data");
         }
 
-        const userData = await response.json();
+        const userData = response.data;
 
         // Ensure data exists before updating state
         if (userData.firstName && userData.lastName) {

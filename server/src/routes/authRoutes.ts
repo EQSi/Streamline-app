@@ -26,11 +26,15 @@ router.post('/login', async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET!, {
+    const accessToken = jwt.sign({ userId: user.id }, process.env.JWT_SECRET!, {
       expiresIn: '1h',
     });
 
-    res.status(200).json({ token });
+    const refreshToken = jwt.sign({ userId: user.id }, process.env.REFRESH_TOKEN_SECRET!, {
+      expiresIn: '7d',
+    });
+
+    res.status(200).json({ accessToken, refreshToken });
   } catch (error) {
     res.status(500).json({ error: 'Internal server error' });
   }
@@ -77,7 +81,7 @@ router.post('/refresh', async (req: Request, res: Response): Promise<void> => {
     const decoded = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET!) as { userId: string };
 
     const newToken = jwt.sign({ userId: decoded.userId }, process.env.JWT_SECRET!, {
-      expiresIn: '15m',
+      expiresIn: '1h',
     });
 
     res.status(200).json({ accessToken: newToken });
