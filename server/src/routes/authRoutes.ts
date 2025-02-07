@@ -65,5 +65,25 @@ router.post('/google-login', async (req: Request, res: Response): Promise<void> 
     res.status(500).json({ error: 'Internal server error' });
   }
 });
+router.post('/refresh', async (req: Request, res: Response): Promise<void> => {
+  const { token: refreshToken } = req.body as { token: string };
+
+  if (!refreshToken) {
+    res.status(400).json({ error: 'Token is required' });
+    return;
+  }
+
+  try {
+    const decoded = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET!) as { userId: string };
+
+    const newToken = jwt.sign({ userId: decoded.userId }, process.env.JWT_SECRET!, {
+      expiresIn: '15m',
+    });
+
+    res.status(200).json({ accessToken: newToken });
+  } catch (error) {
+    res.status(401).json({ error: 'Invalid or expired token' });
+  }
+});
 
 export default router;

@@ -200,20 +200,20 @@ model JobEmployee {
 }
 
 model Location {
-  id            Int       @id @default(autoincrement())
-  name          String    @db.VarChar(100)
-  address       String    @db.VarChar(200)
-  city          String    @db.VarChar(100)
-  state         String    @db.VarChar(50)
-  zipCode       String    @db.VarChar(10)
-  company       Company[]
-  jobs          Job[]
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id               Int           @id @default(autoincrement())
+  company          Company       @relation(fields: [companyId], references: [id])
+  companyId        Int
+  divisions        Division[]
+  jobs             Job[]
+  street1          String        @db.VarChar(200)
+  street2          String        @db.VarChar(200)
+  city             String        @db.VarChar(100)
+  state            String        @db.VarChar(50)
+  zipCode          String        @db.VarChar(10)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
 
-  @@index([name])
-  @@index([city])
-  @@index([state])
+  @@index([companyId])
 }
 
 model JobTemplate {
@@ -335,16 +335,16 @@ model Receipt {
 
 model Company {
   id               Int           @id @default(autoincrement())
-  name             String        @db.VarChar(100)
+  name             String        @unique @db.VarChar(100)
   type             CompanyType
-  email            String?       @db.VarChar(100)
-  locationId       Int?
-  location         Location?     @relation(fields: [locationId], references: [id])
+  hasDivisions     Boolean       @default(false)
+  status           CompanyStatus @default(ACTIVE)
   divisions        Division[]
-  ratings          CompanyRating[]
+  locations        Location[]
   contracts        Contract[]
-  jobs             Job[]         
   contacts         Contact[]
+  jobs             Job[]
+  ratings          CompanyRating[]
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
 
@@ -355,16 +355,20 @@ model Company {
 model Division {
   id               Int           @id @default(autoincrement())
   name             String        @db.VarChar(100)
-  description      String?       @db.Text
   company          Company       @relation(fields: [companyId], references: [id])
   companyId        Int
+  location         Location      @relation(fields: [locationId], references: [id])
+  locationId       Int
   contracts        Contract[]
+  contacts         Contact[]
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
 
-  @@index([name])
+  @@unique([name, companyId])
   @@index([companyId])
+  @@index([locationId])
 }
+
 
 model CompanyRating {
   id               Int           @id @default(autoincrement())
@@ -372,6 +376,7 @@ model CompanyRating {
   companyId        Int
   employee         Employee      @relation(fields: [employeeId], references: [id])
   employeeId       Int
+  category         RatingCategory
   rating           Int           // 1-5 scale
   comment          String?       @db.Text
   createdAt        DateTime      @default(now())
@@ -379,6 +384,14 @@ model CompanyRating {
 
   @@unique([companyId, employeeId])
   @@index([rating])
+}
+
+enum RatingCategory {
+  QUALITY
+  RELIABILITY
+  COMMUNICATION
+  PRICING
+  OVERALL
 }
 
 model Contract {
@@ -428,6 +441,8 @@ model Contact {
   notes         String?     @db.Text
   company       Company?    @relation(fields: [companyId], references: [id])
   companyId     Int?
+  division      Division?   @relation(fields: [divisionId], references: [id])
+  divisionId    Int?
   job           Job?        @relation(fields: [jobId], references: [id])
   jobId         Int?
   employee      Employee?   @relation(fields: [employeeId], references: [id])
@@ -505,6 +520,12 @@ enum ContactType {
   JobContact
   CompanyContact
   EmployeeContact
+}
+
+enum CompanyStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
 }
 
 enum ContractStatus {

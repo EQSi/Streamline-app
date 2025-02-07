@@ -59,3 +59,4 @@ export const ensureAuthenticated = (req: AuthRequest, res: Response, next: NextF
     res.status(401).json({ error: 'Unauthorized' }); // User is not authenticated
   }
 };
+

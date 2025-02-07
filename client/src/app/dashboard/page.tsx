@@ -30,10 +30,10 @@ const DashboardPage: React.FC = () => {
     return <div>Loading...</div>;
   }
 
-  const userId = session?.user?.id || 'exampleUserId';
+  const userId = session?.user?.id;
 
   const [layouts, setLayouts] = useState(() => {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== 'undefined' && userId) {
       const saved = localStorage.getItem(`dashboardLayouts-${userId}`);
       return saved ? JSON.parse(saved) : {};
     }
@@ -53,17 +53,17 @@ const DashboardPage: React.FC = () => {
   const defaultLayouts = {
     lg: cards.map((card, i) => ({
       i: card.i,
-      x: (i % 3) * 4,
-      y: Math.floor(i / 3) * 4,
-      w: 4,
-      h: 4,
-      minW: 3,
-      minH: 3
+      x: (i % 3) * 6,
+      y: Math.floor(i / 3) * 6,
+      w: 12,
+      h: 12,
+      minW: 12,
+      minH: 12
     }))
   };
 
   useEffect(() => {
-    if (Object.keys(layouts).length > 0) {
+    if (Object.keys(layouts).length > 0 && userId) {
       localStorage.setItem(`dashboardLayouts-${userId}`, JSON.stringify(layouts));
     }
   }, [layouts, userId]);
@@ -73,9 +73,9 @@ const DashboardPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-gray-50 p-4">
       <div className="mx-auto w-auto">
-        <h1 className="text-3xl font-bold mb-6">Dashboard</h1>
+        <h1 className="text-3xl font-bold mb-4">Dashboard</h1>
         <ResponsiveGridLayout
           className="layout"
           layouts={layouts || defaultLayouts}

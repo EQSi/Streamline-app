@@ -31,8 +31,8 @@ export const authOptions = {
               username: credentials.username,
               password: credentials.password,
             },
-              { httpsAgent: agent, withCredentials: true }
-            );
+            { httpsAgent: agent, withCredentials: true }
+          );
 
           console.log("Login Response:", response.data);
 
@@ -40,8 +40,9 @@ export const authOptions = {
             const decodedToken = jwtDecode<DecodedToken>(response.data.token);
             return {
               token: response.data.token,
-              id: decodedToken.userId, 
+              id: decodedToken.userId,
               username: credentials.username,
+              refreshToken: response.data.refreshToken, // Assuming the response contains a refreshToken
             };
           }
 
@@ -58,38 +59,45 @@ export const authOptions = {
       },
     }),
   ],
-  pages: {
-    signIn: "https://localhost:3000/login", // Custom login page
-    error: "/error", // Error page
+  session: {
+    strategy: "jwt" as const,
+    maxAge: 30 * 24 * 60 * 60, // 30 days
+    updateAge: 24 * 60 * 60, // 24 hours
   },
   callbacks: {
-    async jwt({ token, user }: { token: any; user?: any }) {
+    async jwt({ token, user }: { token: any, user?: any }) {
       console.log('JWT callback triggered');
       if (user) {
         console.log('User ID:', user.id);
         token.accessToken = user.token; // Store the access token in the JWT token
         token.id = user.id; // Store the user ID in the JWT token
         token.username = user.username; // Store the username in the JWT token
+        token.refreshToken = user.refreshToken; // Store the refresh token in the JWT token
       }
       return token;
     },
-    async session({ session, token }: { session: any; token: any }) {
+    async session({ session, token }: { session: any, token: any }) {
       console.log('Session callback triggered');
       console.log('Token:', token);
       if (token) {
         console.log('Token ID:', token.id);
-        session.accessToken = token.accessToken; 
-        session.user = { ...session.user, id: token.id, username: token.username }; // Merge the user object with the id and username
+        session.accessToken = token.accessToken;
+        session.user = { ...session.user, id: token.id, username: token.username, refreshToken: token.refreshToken }; // Merge the user object with the id, username, and refresh token
       } else {
         console.log('Token is undefined');
       }
       return session;
     },
+    async redirect({ url, baseUrl }: { url: string, baseUrl: string }) {
+      return url.startsWith(baseUrl) ? url : baseUrl;
+    }
   },
-  session: {
-    strategy: "jwt" as const, 
+  pages: {
+    signIn: '/login',
+    error: '/error',
   },
-  secret: process.env.JWT_SECRET, 
+  secret: process.env.NEXTAUTH_SECRET,
+  debug: process.env.NODE_ENV === 'development',
 };
 
 const handler = NextAuth(authOptions);
