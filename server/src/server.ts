@@ -9,6 +9,7 @@ import authRoutes from './routes/authRoutes';
 import userRoutes from './routes/userRoutes';
 import companyRoutes from './routes/companyRoutes';
 import employeeRoutes from './routes/employeeRoutes';
+import divisionRoutes from './routes/divisionRoutes';
 
 dotenv.config();
 
@@ -33,6 +34,7 @@ app.use(express.json());
 // Routes that don't require authentication
 app.use('/api/auth', authRoutes);
 
+app.use('/api', [authenticateToken], divisionRoutes);
 app.use('/api', [authenticateToken], userRoutes);  // Protect this route with JWT
 app.use('/api', [authenticateToken], companyRoutes); 
 app.use('/api', [authenticateToken], employeeRoutes);   // Protect employee routes with JWT

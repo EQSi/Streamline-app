@@ -83,11 +83,13 @@ const CompanyDetailsPage: React.FC = () => {
     const [company, setCompany] = useState<Company | null>(null);
     const [selectedDivision, setSelectedDivision] = useState<Division | null>(null);
 
+    // Editing states
     const [isEditing, setIsEditing] = useState(false);
     const [editName, setEditName] = useState('');
     const [editType, setEditType] = useState<CompanyType>('Customer');
     const [editStatus, setEditStatus] = useState<'ACTIVE' | 'INACTIVE' | 'SUSPENDED'>('ACTIVE');
 
+    // New Division form states
     const [showNewDivisionForm, setShowNewDivisionForm] = useState(false);
     const [newDivisionName, setNewDivisionName] = useState('');
     const [newDivisionLocation, setNewDivisionLocation] = useState<Location>({
@@ -97,6 +99,11 @@ const CompanyDetailsPage: React.FC = () => {
         state: '',
         zipCode: '',
     });
+
+    // Extra fetched data states
+    const [locations, setLocations] = useState<Location[]>([]);
+    const [contracts, setContracts] = useState<Contract[]>([]);
+    const [contacts, setContacts] = useState<Contact[]>([]);
 
     useEffect(() => {
         const fetchCompanyDetails = async () => {
@@ -128,6 +135,45 @@ const CompanyDetailsPage: React.FC = () => {
             fetchCompanyDetails();
         }
     }, [companyId, session]);
+
+    // This effect fetches extra data depending on whether a division is selected.
+    useEffect(() => {
+        const fetchExtraData = async () => {
+            if (!session || !(session as any).accessToken || !company) return;
+            const config = {
+                headers: {
+                    Authorization: `Bearer ${(session as any).accessToken}`,
+                },
+            };
+            try {
+                // If company has divisions and a division is selected, fetch division-specific data
+                if (company.hasDivisions && selectedDivision && selectedDivision.id) {
+                    const [locationsRes] = await Promise.all([
+                        axios.get(`https://localhost:8080/api/divisions/${selectedDivision.id}/locations`, config),
+                        //axios.get(`https://localhost:8080/api/divisions/${selectedDivision.id}/contracts`, config),
+                        //axios.get(`https://localhost:8080/api/divisions/${selectedDivision.id}/contacts`, config),
+                    ]);
+                    setLocations(locationsRes.data);
+                    //setContracts(contractsRes.data);
+                    //setContacts(contactsRes.data);
+                } else {
+                    // Fetch company-specific data for locations, contracts and contacts
+                    const [locationsRes, contractsRes, contactsRes] = await Promise.all([
+                        axios.get(`https://localhost:8080/api/companies/${company.id}/locations`, config),
+                        axios.get(`https://localhost:8080/api/companies/${company.id}/contracts`, config),
+                        axios.get(`https://localhost:8080/api/companies/${company.id}/contacts`, config),
+                    ]);
+                    setLocations(locationsRes.data);
+                    setContracts(contractsRes.data);
+                    setContacts(contactsRes.data);
+                }
+            } catch (error) {
+                console.error('Failed to fetch data:', error);
+            }
+        };
+
+        fetchExtraData();
+    }, [company, selectedDivision, session]);
 
     const handleEditClick = () => {
         if (!company) return;
@@ -177,19 +223,31 @@ const CompanyDetailsPage: React.FC = () => {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
                             <h4 className="font-semibold">Locations</h4>
-                            {selectedDivision.location ? (
+                            {selectedDivision?.location ? (
                                 <p>
                                     {selectedDivision.location.street1}, {selectedDivision.location.city}
                                 </p>
                             ) : (
-                                <p>No location info available</p>
+                                <>
+                                    {locations.length > 0 ? (
+                                        <ul>
+                                            {locations.map((loc) => (
+                                                <li key={loc.id}>
+                                                    {loc.street1}, {loc.city}
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    ) : (
+                                        <p>No location info available</p>
+                                    )}
+                                </>
                             )}
                         </div>
                         <div>
                             <h4 className="font-semibold">Contracts</h4>
-                            {selectedDivision.contracts && selectedDivision.contracts.length > 0 ? (
+                            {contracts.length > 0 ? (
                                 <ul>
-                                    {selectedDivision.contracts.map((contract) => (
+                                    {contracts.map((contract) => (
                                         <li key={contract.id}>{contract.title}</li>
                                     ))}
                                 </ul>
@@ -199,9 +257,9 @@ const CompanyDetailsPage: React.FC = () => {
                         </div>
                         <div>
                             <h4 className="font-semibold">Contacts</h4>
-                            {selectedDivision.contacts && selectedDivision.contacts.length > 0 ? (
+                            {contacts.length > 0 ? (
                                 <ul>
-                                    {selectedDivision.contacts.map((contact) => (
+                                    {contacts.map((contact) => (
                                         <li key={contact.id}>{contact.name}</li>
                                     ))}
                                 </ul>
@@ -220,19 +278,23 @@ const CompanyDetailsPage: React.FC = () => {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
                             <h4 className="font-semibold">Locations</h4>
-                            {company.location ? (
-                                <p>
-                                    {company.location.street1}, {company.location.city}
-                                </p>
+                            {locations.length > 0 ? (
+                                <ul>
+                                    {locations.map((loc) => (
+                                        <li key={loc.id}>
+                                            {loc.street1}, {loc.city}
+                                        </li>
+                                    ))}
+                                </ul>
                             ) : (
                                 <p>No location info available</p>
                             )}
                         </div>
                         <div>
                             <h4 className="font-semibold">Contracts</h4>
-                            {company.contracts && company.contracts.length > 0 ? (
+                            {contracts.length > 0 ? (
                                 <ul>
-                                    {company.contracts.map((contract) => (
+                                    {contracts.map((contract) => (
                                         <li key={contract.id}>{contract.title}</li>
                                     ))}
                                 </ul>
@@ -242,9 +304,9 @@ const CompanyDetailsPage: React.FC = () => {
                         </div>
                         <div>
                             <h4 className="font-semibold">Contacts</h4>
-                            {company.contacts && company.contacts.length > 0 ? (
+                            {contacts.length > 0 ? (
                                 <ul>
-                                    {company.contacts.map((contact) => (
+                                    {contacts.map((contact) => (
                                         <li key={contact.id}>{contact.name}</li>
                                     ))}
                                 </ul>
@@ -527,7 +589,7 @@ const CompanyDetailsPage: React.FC = () => {
                                 onClick={() => setShowNewDivisionForm(true)}
                                 className="p-2 bg-green-600 text-white rounded-full w-12 h-12 flex items-center justify-center hover:bg-green-700"
                             >
-                            <Plus />
+                                <Plus />
                             </button>
                         </div>
                     )}

@@ -4,7 +4,6 @@ import bcrypt from 'bcrypt'; // Ensure you have bcrypt installed
 
 const router = express.Router();
 
-
 // Get all users
 router.get('/users', async (_: Request, res: Response) => {
   try {
@@ -12,7 +11,7 @@ router.get('/users', async (_: Request, res: Response) => {
 
     // Exclude sensitive data from the response (e.g., passwords)
     const usersWithoutPasswords = users.map(user => {
-      const { password, ...publicUserData } = user; // Destructure and remove password
+      const { password, ...publicUserData } = user;
       return publicUserData;
     });
 
@@ -28,7 +27,7 @@ router.get('/users/:id', async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params;
 
     const user = await prisma.user.findUnique({
-      where: { id: Number(id) },
+      where: { id }, // id is now treated as string
       include: { employee: true },
     });
 
@@ -55,7 +54,6 @@ router.get('/users/:id', async (req: Request, res: Response): Promise<void> => {
   }
 });
 
-
 // Create a new user
 router.post('/users', async (req: Request, res: Response) => {
   const { username, password, roles } = req.body;
@@ -75,7 +73,7 @@ router.post('/users', async (req: Request, res: Response) => {
     });
 
     // Exclude password from the response when sending the created user data
-    const { password: _, ...publicNewUser } = newUser; // Remove password from the response
+    const { password: _, ...publicNewUser } = newUser;
     res.status(201).json(publicNewUser);
   } catch (error) {
     console.error('Error creating user:', error);
@@ -90,7 +88,7 @@ router.put('/users/:id', async (req: Request, res: Response) => {
   try {
     const hashedPassword = await bcrypt.hash(password, 10);
     const updatedUser = await prisma.user.update({
-      where: { id: Number(id) },
+      where: { id }, // id is now treated as string
       data: {
         username,
         password: hashedPassword,
@@ -112,7 +110,7 @@ router.delete('/users/:id', async (req: Request, res: Response) => {
   const { id } = req.params;
   try {
     await prisma.user.delete({
-      where: { id: Number(id) },
+      where: { id }, // id is now treated as string
     });
     res.status(204).end();
   } catch (error) {

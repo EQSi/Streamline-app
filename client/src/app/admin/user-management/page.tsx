@@ -6,25 +6,6 @@ import React, { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import axiosInstance from '@/state/axios';
 
-interface Employee {
-    id: number;
-    firstName: string;
-    lastName: string;
-    email: string;
-    phoneNumber?: string;
-    position?: string;
-    startDate: string;
-    status: string;
-    userId: number;
-    salary: number;
-}
-
-interface User {
-    id: number;
-    username: string;
-    role: string; 
-}
-
 // Helper to format phone numbers e.g. (123) 456-7890
 const formatPhoneNumber = (value: string) => {
     const phoneNumber = value.replace(/[^\d]/g, '');
@@ -45,12 +26,62 @@ async function hashPassword(password: string): Promise<string> {
     return bcrypt.hash(password, 10);
 }
 
+// Function to validate login credentials
+const validateCredentials = (username: string, password: string) => {
+    const usernameRegex = /^[a-zA-Z][a-zA-Z0-9_]{2,19}$/;
+    const passwordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+
+    const errors: string[] = [];
+
+    if (!usernameRegex.test(username)) {
+        errors.push("Username must be between 3-20 characters, start with a letter, and can only contain letters, numbers, and underscores.");
+    }
+
+    if (!passwordRegex.test(password)) {
+        errors.push("Password must be at least 8 characters long, contain at least one number, one uppercase letter, and one special character.");
+    }
+
+    return {
+        isValid: errors.length === 0,
+        errors,
+    };
+};
+
+// Function to calculate password strength
+const calculatePasswordStrength = (password: string) => {
+    let strength = 0;
+    if (password.length >= 8) strength++;
+    if (/[A-Z]/.test(password)) strength++;
+    if (/\d/.test(password)) strength++;
+    if (/[@$!%*?&]/.test(password)) strength++;
+    return strength;
+};
+
+interface Employee {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    phoneNumber?: string;
+    position?: string;
+    startDate: string;
+    status: string;
+    userId: number;
+    salary: number;
+}
+
+interface User {
+    id: string;
+    username: string;
+    role: string; 
+}
+
 export default function UserManagementPage() {
     const router = useRouter();
     const { data: session } = useSession();
     const [employees, setEmployees] = useState<Employee[]>([]);
     const [users, setUsers] = useState<User[]>([]);
-    const [editingEmployeeId, setEditingEmployeeId] = useState<number | null>(null);
+    const [editingEmployeeId, setEditingEmployeeId] = useState<string | null>(null);
     const [editingPassword, setEditingPassword] = useState("");
     const [newEmployee, setNewEmployee] = useState({
         firstName: "",
@@ -119,9 +150,13 @@ export default function UserManagementPage() {
         if (!session?.accessToken) return;
 
         try {
-            // Hash the password before sending using bcrypt
-            const hashedPassword = await hashPassword(newEmployee.password);
+            const { isValid, errors } = validateCredentials(newEmployee.username, newEmployee.password);
+            if (!isValid) {
+                alert(errors.join('\n'));
+                return;
+            }
 
+            const hashedPassword = await hashPassword(newEmployee.password);
             const newUser = {
                 username: newEmployee.username,
                 password: hashedPassword,
@@ -192,8 +227,13 @@ export default function UserManagementPage() {
             setEmployees((prevEmployees) =>
                 prevEmployees.map((emp) => (emp.id === updatedEmployee.id ? updatedEmployee : emp))
             );
-            // If a new password is provided, update the user password
+
             if (editingPassword.trim() !== "") {
+                const { isValid, errors } = validateCredentials(employee.email, editingPassword); // or some username reference
+                if (!isValid) {
+                    alert(errors.join('\n'));
+                    return;
+                }
                 const hashedPassword = await hashPassword(editingPassword);
                 await axiosInstance.put(`/users/${employee.userId}`, { password: hashedPassword }, {
                     headers: { 
@@ -210,7 +250,7 @@ export default function UserManagementPage() {
         }
     };
 
-    const handleDeleteEmployee = async (id: number) => {
+    const handleDeleteEmployee = async (id: String) => {
         if (!session?.accessToken) return;
 
         try {
@@ -221,19 +261,18 @@ export default function UserManagementPage() {
                     "Cache-Control": "no-store",
                 },
             });
-
-            setEmployees(employees.filter(emp => emp.id !== id));
+            setEmployees(employees.filter(emp => emp.id !== id.toString()));
         } catch (error) {
             console.error('Error deleting employee:', error);
         }
     };
 
-    const handleEditClick = (id: number) => {
+    const handleEditClick = (id: string) => {
         setEditingPassword("");
-        setEditingEmployeeId(editingEmployeeId === id ? null : id);
+        setEditingEmployeeId(editingEmployeeId === id.toString() ? null : id.toString());
     };
 
-    const handleDeleteClick = (id: number) => {
+    const handleDeleteClick = (id: string) => {
         handleDeleteEmployee(id);
     };
 
@@ -387,9 +426,17 @@ export default function UserManagementPage() {
                                 type="password"
                                 placeholder="Password"
                                 value={newEmployee.password}
-                                onChange={(e) => setNewEmployee({ ...newEmployee, password: e.target.value })}
+                                onChange={(e) => {
+                                    setNewEmployee({ ...newEmployee, password: e.target.value });
+                                    const strength = calculatePasswordStrength(e.target.value);
+                                    const { isValid, errors } = validateCredentials(newEmployee.username, e.target.value);
+                                    if (!isValid) console.log(errors.join('\n'));
+                                }}
                                 className="border border-gray-300 rounded w-full px-3 py-2 focus:outline-none focus:ring focus:ring-indigo-300"
                             />
+                            <p className="text-sm text-gray-500">
+                                Password must be at least 8 chars, with at least one uppercase, one digit, and one special character.
+                            </p>
                         </div>
                         <div className="space-y-2">
                             <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
@@ -431,7 +478,7 @@ export default function UserManagementPage() {
                                     <td className="py-2 px-4 border-b">{employee.firstName} {employee.lastName}</td>
                                     <td className="py-2 px-4 border-b">{employee.email}</td>
                                     <td className="py-2 px-4 border-b">{formatPosition(employee.position)}</td>
-                                    <td className="py-2 px-4 border-b">{users.find(user => user.id === employee.userId)?.username}</td>
+                                    <td className="py-2 px-4 border-b">{users.find(user => user.id === employee.userId.toString())?.username}</td>
                                     <td className="py-2 px-4 border-b">
                                         <button
                                             data-id={employee.id}

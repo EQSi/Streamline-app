@@ -4,14 +4,21 @@ import axios from "axios";
 import https from "https";
 import { jwtDecode } from "jwt-decode";
 
-
 interface DecodedToken {
-  userId: string;
+  userId: string; 
   [key: string]: any;
 }
 
-export const authOptions = {
-  secret: process.env.NEXTAUTH_SECRET, 
+function convertWString(wstr: string): string {
+
+  if (wstr.startsWith("L'") && wstr.endsWith("'")) {
+    return wstr.slice(2, -1);
+  }
+  return wstr;
+}
+
+const authOptions = {
+  secret: process.env.NEXTAUTH_SECRET,
   session: {
     strategy: "jwt" as const,
     maxAge: 30 * 24 * 60 * 60, // 30 days
@@ -27,11 +34,11 @@ export const authOptions = {
       async authorize(credentials) {
         try {
           const agent = new https.Agent({ rejectUnauthorized: false });
-
+   
           if (!credentials) {
             throw new Error("Credentials are required");
           }
-
+   
           const response = await axios.post(
             "https://localhost:8080/api/auth/login",
             {
@@ -40,22 +47,24 @@ export const authOptions = {
             },
             { httpsAgent: agent, withCredentials: true }
           );
-
+   
           console.log("Login Response:", response.data);
-
+   
           if (response.data) {
             if (!response.data.accessToken) {
               throw new Error("Access token is missing in the response");
             }
             const decodedToken = jwtDecode<DecodedToken>(response.data.accessToken);
+            const userId = convertWString(decodedToken.userId);
+   
             return {
               token: response.data.accessToken,
-              id: decodedToken.userId,
+              id: userId,
               username: credentials.username,
               refreshToken: response.data.refreshToken, // Assuming the response contains a refreshToken
             };
           }
-
+   
           return null;
         } catch (error) {
           const err = error as any;
@@ -74,10 +83,10 @@ export const authOptions = {
       console.log('JWT callback triggered');
       if (user) {
         console.log('User ID:', user.id);
-        token.accessToken = user.token; // Store the access token in the JWT token
-        token.id = user.id; // Store the user ID in the JWT token
-        token.username = user.username; // Store the username in the JWT token
-        token.refreshToken = user.refreshToken; // Store the refresh token in the JWT token
+        token.accessToken = user.token;
+        token.id = user.id;
+        token.username = user.username;
+        token.refreshToken = user.refreshToken;
       }
       return token;
     },
@@ -87,7 +96,7 @@ export const authOptions = {
       if (token) {
         console.log('Token ID:', token.id);
         session.accessToken = token.accessToken;
-        session.user = { ...session.user, id: token.id, username: token.username, refreshToken: token.refreshToken }; // Merge the user object with the id, username, and refresh token
+        session.user = { ...session.user, id: token.id, username: token.username, refreshToken: token.refreshToken };
       } else {
         console.log('Token is undefined');
       }

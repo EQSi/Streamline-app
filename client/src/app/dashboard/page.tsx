@@ -20,29 +20,39 @@ const DashboardPage: React.FC = () => {
   const { data: session, status } = useSession() as { data: { user: SessionUser } | null; status: string };
   const router = useRouter();
 
+  // Redirect if not authenticated, but keep it separate from hooks.
   useEffect(() => {
     if (status === 'unauthenticated') {
       router.push('/login');
     }
   }, [status, router]);
 
+  // Early return for loading state
   if (status === 'loading') {
     return <div>Loading...</div>;
   }
 
   const userId = session?.user?.id;
 
+  // Initialize the layouts state once and avoid conditional useState
   const [layouts, setLayouts] = useState(() => {
     if (typeof window !== 'undefined' && userId) {
       const saved = localStorage.getItem(`dashboardLayouts-${userId}`);
       return saved ? JSON.parse(saved) : {};
     }
-    return {};
+    return {}; // default empty layout
   });
+
+  // Handle saving layouts to localStorage on changes
+  useEffect(() => {
+    if (userId && Object.keys(layouts).length > 0) {
+      localStorage.setItem(`dashboardLayouts-${userId}`, JSON.stringify(layouts));
+    }
+  }, [layouts, userId]);
 
   const cards = [
     { i: 'jobs', name: 'Jobs', content: 'Job Numbers with list by stage\nPerformance- still finding out how to measure' },
-    { i: 'task', name: 'Task', content: 'Personal tasks, job tasks, and personal reciepts/pictures' },
+    { i: 'task', name: 'Task', content: 'Personal tasks, job tasks, and personal receipts/pictures' },
     { i: 'schedule', name: 'Schedule', content: 'Content for card 3 goes here.' },
     { i: 'card4', name: 'Card 4', content: 'Content for card 4 goes here.' },
     { i: 'card5', name: 'Card 5', content: 'Content for card 5 goes here.' },
@@ -61,12 +71,6 @@ const DashboardPage: React.FC = () => {
       minH: 12
     }))
   };
-
-  useEffect(() => {
-    if (Object.keys(layouts).length > 0 && userId) {
-      localStorage.setItem(`dashboardLayouts-${userId}`, JSON.stringify(layouts));
-    }
-  }, [layouts, userId]);
 
   const handleLayoutChange = (layout: any, allLayouts: any) => {
     setLayouts(allLayouts);

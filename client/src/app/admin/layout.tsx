@@ -17,10 +17,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 }
 
 function AdminLayoutContent({ children }: { children: React.ReactNode }) {
-    const { data: session, status } = useSession();
+    const { status } = useSession();
     const isDarkMode = useAppSelector((state) => state.global.isDarkMode);
     const isSidebarCollapsed = useAppSelector((state) => state.global.isSidebarCollapsed);
-    const router = useRouter();
 
     useEffect(() => {
         // Redirect to dashboard if the user is unauthenticated

@@ -15,7 +15,7 @@ datasource db {
 
 // User-Related Tables
 model User {
-  id                 Int       @id @default(autoincrement())
+  id                 String    @id @default(uuid())
   username           String    @unique @db.VarChar(100)
   password           String
   roles              Role      @default(EMPLOYEE)
@@ -31,7 +31,7 @@ model User {
 }
 
 model Employee {
-  id                 Int       @id @default(autoincrement())
+  id                 String       @id @default(uuid())
   firstName          String    @db.VarChar(50)
   lastName           String    @db.VarChar(50)
   email              String    @unique @db.VarChar(100)
@@ -45,7 +45,7 @@ model Employee {
   state              String?   @db.VarChar(50)
   zipCode            String?   @db.VarChar(10)
   user               User      @relation(fields: [userId], references: [id])
-  userId             Int       @unique
+  userId             String    @unique
   timeEntries         TimeEntry[]
   approvedTimeEntries TimeEntry[] @relation("TimeEntryApprovals")
   certifications     EmployeeCertification[]
@@ -66,7 +66,7 @@ model Employee {
 model TimeEntry {
   id            Int             @id @default(autoincrement())
   employee      Employee        @relation(fields: [employeeId], references: [id])
-  employeeId    Int
+  employeeId    String
   type          TimeEntryType
   date          DateTime
   startTime     DateTime
@@ -79,7 +79,7 @@ model TimeEntry {
   job           Job?            @relation(fields: [jobId], references: [id])
   jobId         Int?
   approvedBy    Employee?       @relation("TimeEntryApprovals", fields: [approvedById], references: [id])
-  approvedById  Int?
+  approvedById  String?
   approvedAt    DateTime?
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
@@ -106,7 +106,7 @@ model Certification {
 model EmployeeCertification {
   id               Int           @id @default(autoincrement())
   employee         Employee      @relation(fields: [employeeId], references: [id])
-  employeeId       Int
+  employeeId       String
   certification    Certification @relation(fields: [certificationId], references: [id])
   certificationId  Int
   dateObtained     DateTime
@@ -126,7 +126,7 @@ model Task {
   priority         Priority   @default(Medium)
   dueDate          DateTime?
   employee         Employee   @relation(fields: [employeeId], references: [id])
-  employeeId       Int
+  employeeId       String
   job              Job?      @relation(fields: [jobId], references: [id])
   jobId            Int?
   createdAt        DateTime  @default(now())
@@ -191,7 +191,7 @@ model JobEmployee {
   job              Job      @relation(fields: [jobId], references: [id])
   jobId            Int
   employee         Employee @relation(fields: [employeeId], references: [id])
-  employeeId       Int
+  employeeId       String
   role             JobRole  @default(Worker)
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
@@ -324,7 +324,7 @@ model Receipt {
   description   String    @db.Text
   imageUrl      String?
   employee      Employee  @relation(fields: [employeeId], references: [id])
-  employeeId    Int
+  employeeId    String
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
@@ -375,7 +375,7 @@ model CompanyRating {
   company          Company       @relation(fields: [companyId], references: [id])
   companyId        Int
   employee         Employee      @relation(fields: [employeeId], references: [id])
-  employeeId       Int
+  employeeId       String
   category         RatingCategory
   rating           Int           // 1-5 scale
   comment          String?       @db.Text
@@ -446,7 +446,7 @@ model Contact {
   job           Job?        @relation(fields: [jobId], references: [id])
   jobId         Int?
   employee      Employee?   @relation(fields: [employeeId], references: [id])
-  employeeId    Int?
+  employeeId    String?
 
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
@@ -496,7 +496,7 @@ model Document {
   contract    Contract? @relation(fields: [contractId], references: [id])
   contractId  Int?
   createdBy   Employee @relation("EmployeeCreatedDocuments", fields: [employeeId], references: [id])
-  employeeId  Int
+  employeeId  String
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -510,7 +510,7 @@ model Notification {
   message     String    @db.Text
   isRead      Boolean   @default(false)
   employee    Employee  @relation(fields: [employeeId], references: [id])
-  employeeId  Int
+  employeeId  String
   createdAt   DateTime  @default(now())
 
   @@index([employeeId, isRead])

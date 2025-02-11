@@ -257,9 +257,9 @@ const EditCompanyForm: React.FC<EditCompanyFormProps> = ({ company, onUpdateComp
 };
 
 
-export type SortCriteria = 'name' | 'type' | 'active';
+type SortCriteria = 'name' | 'type' | 'active';
 
-export const sortCompanies = (
+const sortCompanies = (
     companies: Company[],
     criteria: SortCriteria,
     ascending: boolean = true

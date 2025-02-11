@@ -24,7 +24,7 @@ router.get('/employees/:id', async (req: Request, res: Response) => {
     const { id } = req.params;
     try {
         const employee = await prisma.employee.findUnique({
-            where: { id: Number(id) },
+            where: { id },
             include: {
                 user: true,
             },
@@ -42,16 +42,15 @@ router.get('/employees/:id', async (req: Request, res: Response) => {
 
 // Create a new employee
 router.post('/employees', async (req: Request, res: Response) => {
-    const { id, firstName, lastName, email, phoneNumber, position, startDate, status, userId, salary } = req.body as {
-        id?: number;
+    const { firstName, lastName, email, phoneNumber, position, startDate, status, userId, salary } = req.body as {
         firstName: string;
         lastName: string;
         email: string;
         phoneNumber: string;
         position: Position;
-        startDate: string; // Changed to string to parse date
+        startDate: string; // Using string for date parsing
         status: EmployeeStatus;
-        userId: number;
+        userId: string;
         salary: number;
     };
     try {
@@ -82,7 +81,7 @@ router.put('/employees/:id', async (req: Request, res: Response) => {
     try {
         const [updatedEmployee, updatedUser] = await prisma.$transaction([
             prisma.employee.update({
-                where: { id: Number(id) },
+                where: { id },
                 data: {
                     firstName,
                     lastName,
@@ -116,7 +115,7 @@ router.delete('/employees/:id', async (req: Request, res: Response) => {
     const { id } = req.params;
     try {
         await prisma.employee.delete({
-            where: { id: Number(id) },
+            where: { id },
         });
         res.status(204).end();
     } catch (error) {
