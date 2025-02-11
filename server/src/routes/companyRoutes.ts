@@ -42,17 +42,23 @@ router.get('/companies/:id', async (req: Request, res: Response, next: NextFunct
 
 // Create a new company
 router.post('/companies', async (req: Request, res: Response, next: NextFunction) => {
-    const { name, type, status } = req.body as {
+    const { name, type, status, hasDivisions } = req.body as {
         name: string;
         type: CompanyType;
         status: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED';
+        hasDivisions: boolean;
     };
     try {
+        // Return the created company with its divisions (which will be empty initially)
         const newCompany = await prisma.company.create({
             data: {
                 name,
                 type,
                 status,
+                hasDivisions,
+            },
+            include: {
+                divisions: true,
             },
         });
         res.status(201).json(newCompany);
@@ -65,14 +71,19 @@ router.post('/companies', async (req: Request, res: Response, next: NextFunction
 // Update an existing company
 router.put('/companies/:id', async (req: Request, res: Response, next: NextFunction) => {
     const { id } = req.params;
-    const { name, type, status } = req.body;
+    const { name, type, status, hasDivisions } = req.body;
     try {
+        // Update the company and return it along with its divisions
         const updatedCompany = await prisma.company.update({
             where: { id: Number(id) },
             data: {
                 name,
                 type,
                 status,
+                hasDivisions,
+            },
+            include: {
+                divisions: true,
             },
         });
         res.json(updatedCompany);
@@ -96,6 +107,7 @@ router.delete('/companies/:id', async (req: Request, res: Response, next: NextFu
     }
 });
 
+// Add a division to a company
 // Add a division to a company
 router.post('/companies/:companyId/divisions', async (req: Request, res: Response, next: NextFunction) => {
     const { companyId } = req.params;
@@ -126,11 +138,32 @@ router.post('/companies/:companyId/divisions', async (req: Request, res: Respons
                     connect: { id: Number(companyId) },
                 },
             },
+            include: {
+                location: true,
+                company: true,
+            }
         });
         res.status(201).json(newDivision);
     } catch (error) {
         console.error('Error adding division:', error);
         res.status(500).json({ error: 'Failed to add division', details: (error as Error).message });
+    }
+});
+
+// Get all divisions for a specific company
+router.get('/companies/:companyId/divisions', async (req: Request, res: Response, next: NextFunction) => {
+    const { companyId } = req.params;
+    try {
+        const divisions = await prisma.division.findMany({
+            where: { companyId: Number(companyId) },
+            include: {
+                location: true,
+            },
+        });
+        res.json(divisions);
+    } catch (error) {
+        console.error('Error fetching divisions:', error);
+        res.status(500).json({ error: 'Failed to fetch divisions', details: (error as Error).message });
     }
 });
 

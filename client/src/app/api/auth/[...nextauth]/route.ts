@@ -4,12 +4,19 @@ import axios from "axios";
 import https from "https";
 import { jwtDecode } from "jwt-decode";
 
+
 interface DecodedToken {
   userId: string;
   [key: string]: any;
 }
 
 export const authOptions = {
+  secret: process.env.NEXTAUTH_SECRET, 
+  session: {
+    strategy: "jwt" as const,
+    maxAge: 30 * 24 * 60 * 60, // 30 days
+    updateAge: 24 * 60 * 60, // 24 hours
+  },
   providers: [
     CredentialsProvider({
       name: "Credentials",
@@ -62,11 +69,6 @@ export const authOptions = {
       },
     }),
   ],
-  session: {
-    strategy: "jwt" as const,
-    maxAge: 30 * 24 * 60 * 60, // 30 days
-    updateAge: 24 * 60 * 60, // 24 hours
-  },
   callbacks: {
     async jwt({ token, user }: { token: any, user?: any }) {
       console.log('JWT callback triggered');
@@ -99,7 +101,6 @@ export const authOptions = {
     signIn: '/login',
     error: '/error',
   },
-  secret: process.env.NEXTAUTH_SECRET,
   debug: process.env.NODE_ENV === 'development',
 };
 

@@ -42,7 +42,7 @@ const SidebarLink = ({ href, icon: Icon, label, isCollapsed }: SidebarLinkProps)
       <div
         className={`cursor-pointer flex items-center ${
           isCollapsed ? 'justify-center py-4' : 'justify-start px-8 py-4'
-        } hover:text-blue-500 hover:bg-blue-100 gap-3 transition-colors ${
+        } hover:text-blue-500 hover:bg-blue-500 gap-3 transition-colors ${
           isActive ? 'bg-blue-200 text-white' : ''
         } figtree-font`}
       >
@@ -68,7 +68,7 @@ const Sidebar = () => {
   } bg-white transition-all duration-300 overflow-visible shadow-md z-40 figtree-font`;
 
   return (
-    <div className={sidebarClassNames}>
+    <div className={`bg-gray-200 ${sidebarClassNames}`}>
       <div
         className={`flex gap-3 justify-between md:justify-normal items-center pt-8 ${
           isSidebarCollapsed ? 'px-5' : 'px-8'
