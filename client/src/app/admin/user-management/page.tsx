@@ -427,13 +427,20 @@ export default function UserManagementPage() {
                                 placeholder="Password"
                                 value={newEmployee.password}
                                 onChange={(e) => {
-                                    setNewEmployee({ ...newEmployee, password: e.target.value });
-                                    const strength = calculatePasswordStrength(e.target.value);
-                                    const { isValid, errors } = validateCredentials(newEmployee.username, e.target.value);
+                                    const newPassword = e.target.value;
+                                    setNewEmployee({ ...newEmployee, password: newPassword });
+                                    const strength = calculatePasswordStrength(newPassword);
+                                    const { isValid, errors } = validateCredentials(newEmployee.username, newPassword);
                                     if (!isValid) console.log(errors.join('\n'));
                                 }}
                                 className="border border-gray-300 rounded w-full px-3 py-2 focus:outline-none focus:ring focus:ring-indigo-300"
                             />
+                            <div className="relative h-2 w-full bg-gray-200 rounded">
+                                <div
+                                    className="absolute top-0 left-0 h-full bg-green-500 transition-all duration-300"
+                                    style={{ width: `${(calculatePasswordStrength(newEmployee.password) / 4) * 100}%` }}
+                                />
+                            </div>
                             <p className="text-sm text-gray-500">
                                 Password must be at least 8 chars, with at least one uppercase, one digit, and one special character.
                             </p>

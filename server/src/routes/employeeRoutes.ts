@@ -99,7 +99,7 @@ router.put('/employees/:id', async (req: Request, res: Response) => {
                 data: {
                     username,
                     password,
-                    roles: role,
+                    role: role,
                 },
             }),
         ]);

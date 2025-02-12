@@ -13,15 +13,16 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// User-Related Tables
 model User {
   id                 String    @id @default(uuid())
   username           String    @unique @db.VarChar(100)
   password           String
-  roles              Role      @default(EMPLOYEE)
+  roleId             String    
+  role               Role      @relation(fields: [roleId], references: [id], onDelete: Cascade)
   googleId           String?   @unique
   googleAccessToken  String?
   googleRefreshToken String?
+  permissions        UserPermission[]
   employee           Employee?
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
@@ -62,6 +63,45 @@ model Employee {
   @@index([email])
   @@index([userId])
 }
+
+model Role {
+  id                String   @id @default(uuid())
+  name              String   @unique @db.VarChar(50)
+  permissionGroupId String   @db.Uuid
+  permissionGroup   PermissionGroup @relation(fields: [permissionGroupId], references: [id], onDelete: Cascade)
+  users             User[]
+}
+
+model PermissionGroup {
+  id          String  @id @default(uuid()) @db.Uuid
+  name        String  @unique @db.VarChar(50)
+  permissions PermissionOnGroup[]
+  roles       Role[]
+}
+
+model Permission {
+  id   String  @id @default(uuid())
+  name String  @unique
+  users UserPermission[]
+  permissionGroups PermissionOnGroup[]
+}
+
+model UserPermission {
+  id           String      @id @default(uuid())
+  userId       String
+  permissionId String
+  user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  permission   Permission  @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+}
+
+model PermissionOnGroup {
+  id              String      @id @default(uuid())
+  permissionId    String
+  permissionGroupId String    @db.Uuid
+  permission      Permission  @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  permissionGroup PermissionGroup @relation(fields: [permissionGroupId], references: [id], onDelete: Cascade)
+}
+
 
 model TimeEntry {
   id            Int             @id @default(autoincrement())
@@ -600,11 +640,6 @@ enum EmployeeStatus {
   Suspended
 }
 
-enum Role {
-  ADMIN
-  MANAGER
-  EMPLOYEE
-}
 
 enum Position {
   ProjectManager

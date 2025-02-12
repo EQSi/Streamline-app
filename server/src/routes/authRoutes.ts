@@ -55,7 +55,8 @@ router.post('/google-login', async (req: Request, res: Response): Promise<void> 
           googleAccessToken,
           googleRefreshToken,
           username: `google_${googleId}`,
-          password: '', 
+          password: '',
+          role: { connect: { name: 'USER' } },
         },
       });
     }

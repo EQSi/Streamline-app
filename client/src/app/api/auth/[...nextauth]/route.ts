@@ -34,11 +34,9 @@ const authOptions = {
       async authorize(credentials) {
         try {
           const agent = new https.Agent({ rejectUnauthorized: false });
-   
-          if (!credentials) {
-            throw new Error("Credentials are required");
-          }
-   
+      
+          if (!credentials) throw new Error("Credentials are required");
+      
           const response = await axios.post(
             "https://localhost:8080/api/auth/login",
             {
@@ -47,61 +45,66 @@ const authOptions = {
             },
             { httpsAgent: agent, withCredentials: true }
           );
-   
-          console.log("Login Response:", response.data);
-   
+      
           if (response.data) {
-            if (!response.data.accessToken) {
-              throw new Error("Access token is missing in the response");
-            }
+            if (!response.data.accessToken) throw new Error("Access token is missing");
+      
             const decodedToken = jwtDecode<DecodedToken>(response.data.accessToken);
             const userId = convertWString(decodedToken.userId);
-   
+      
+            // Fetch role and permissions from your API
+            const userDetails = await axios.get(`https://localhost:8080/api/users/${userId}`, {
+              headers: {
+                Authorization: `Bearer ${response.data.accessToken}`,
+              },
+              httpsAgent: agent,
+            });
+            
+      
             return {
               token: response.data.accessToken,
               id: userId,
               username: credentials.username,
-              refreshToken: response.data.refreshToken, // Assuming the response contains a refreshToken
+              refreshToken: response.data.refreshToken,
+              role: userDetails.data.role, 
+              permissions: userDetails.data.permissions, 
             };
           }
-   
+      
           return null;
         } catch (error) {
-          const err = error as any;
-          if (err.response && err.response.status === 401) {
-            console.error("Invalid credentials:", err.response.data);
-          } else {
-            console.error("Authentication failed:", err);
-          }
+          console.error("Authentication failed:", error);
           return null;
         }
-      },
+      },      
     }),
   ],
   callbacks: {
     async jwt({ token, user }: { token: any, user?: any }) {
-      console.log('JWT callback triggered');
       if (user) {
-        console.log('User ID:', user.id);
         token.accessToken = user.token;
         token.id = user.id;
         token.username = user.username;
         token.refreshToken = user.refreshToken;
+        token.role = user.role;
+        token.permissions = user.permissions;
       }
       return token;
-    },
+    },    
     async session({ session, token }: { session: any, token: any }) {
-      console.log('Session callback triggered');
-      console.log('Token:', token);
       if (token) {
-        console.log('Token ID:', token.id);
         session.accessToken = token.accessToken;
-        session.user = { ...session.user, id: token.id, username: token.username, refreshToken: token.refreshToken };
-      } else {
-        console.log('Token is undefined');
+        session.user = {
+          ...session.user,
+          id: token.id,
+          username: token.username,
+          refreshToken: token.refreshToken,
+          role: token.role,
+          permissions: token.permissions,
+        };
       }
       return session;
-    },
+    },    
     async redirect({ url, baseUrl }: { url: string, baseUrl: string }) {
       return url.startsWith(baseUrl) ? url : baseUrl;
     }

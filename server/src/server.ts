@@ -10,6 +10,7 @@ import userRoutes from './routes/userRoutes';
 import companyRoutes from './routes/companyRoutes';
 import employeeRoutes from './routes/employeeRoutes';
 import divisionRoutes from './routes/divisionRoutes';
+import permissionRoutes from './routes/permissionRoutes';
 
 dotenv.config();
 
@@ -38,6 +39,8 @@ app.use('/api', [authenticateToken], divisionRoutes);
 app.use('/api', [authenticateToken], userRoutes);  // Protect this route with JWT
 app.use('/api', [authenticateToken], companyRoutes); 
 app.use('/api', [authenticateToken], employeeRoutes);   // Protect employee routes with JWT
+app.use('/api', [authenticateToken], permissionRoutes);   // Protect employee routes with JWT
+
 
 // HTTPS server setup
 https.createServer(options, app).listen(PORT, () => {

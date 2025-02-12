@@ -28,7 +28,13 @@ router.get('/users/:id', async (req: Request, res: Response): Promise<void> => {
 
     const user = await prisma.user.findUnique({
       where: { id }, // id is now treated as string
-      include: { employee: true },
+      select: {
+        id: true,
+        username: true,
+        role: true,
+        employee: true,
+        permissions: { include: { permission: true } },
+      },
     });
 
     if (!user) {
@@ -41,10 +47,13 @@ router.get('/users/:id', async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
+    const userPermissions = user.permissions.map(up => up.permission.name);
+
     res.json({
       id: user.id,
       username: user.username,
-      roles: user.roles,
+      role: user.role,
+      permissions: userPermissions,
       firstName: user.employee.firstName,
       lastName: user.employee.lastName,
     });
@@ -68,7 +77,7 @@ router.post('/users', async (req: Request, res: Response) => {
       data: {
         username,
         password: hashedPassword,
-        roles,
+        role: roles,
       },
     });
 
@@ -92,7 +101,7 @@ router.put('/users/:id', async (req: Request, res: Response) => {
       data: {
         username,
         password: hashedPassword,
-        roles,
+        role: roles,
       },
     });
 

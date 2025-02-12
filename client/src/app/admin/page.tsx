@@ -17,6 +17,10 @@ export default function AdminLandingPage() {
         router.push('/admin/settings');
     };
 
+    const navigateToPermission = () => {
+        router.push('/admin/permission');
+    };
+
     const handleBack = () => {
         router.back();     
     };
@@ -50,6 +54,12 @@ export default function AdminLandingPage() {
                         className="px-6 py-3 bg-blue-500 text-white rounded-md hover:bg-blue-600 mb-4 block"
                     >
                         Settings
+                    </button>
+                    <button
+                        onClick={navigateToPermission}
+                        className="px-6 py-3 bg-blue-500 text-white rounded-md hover:bg-blue-600 mb-4 block"
+                    >
+                        Permissions
                     </button>
                 </div>
             </main>

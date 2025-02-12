@@ -1,5 +1,5 @@
 import LoginForm from './form';
-import AuthProvider from '../../../../components/SessionProvider';
+import AuthProvider from '@/components/SessionProvider';
 
 export default function LoginPage() {
     return (
