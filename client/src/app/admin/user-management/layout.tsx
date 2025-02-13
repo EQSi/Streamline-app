@@ -2,7 +2,7 @@
 
 import { useSession, signIn } from 'next-auth/react';
 import { useEffect } from 'react';
-import { useAppSelector } from '@/app/redux';
+import { useAppSelector } from '@/src/app/redux';
 
 export default function UserManagementLayout({ children }: { children: React.ReactNode }) {
     const { data: session, status } = useSession();

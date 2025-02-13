@@ -1,243 +1,151 @@
-import { Router } from 'express'
-import { PrismaClient } from '@prisma/client'
+import { Router, Request, Response, NextFunction } from 'express';
+import prisma from '../prismaClient'; // Ensure you have a Prisma client setup
 
-const prisma = new PrismaClient()
-const router = Router()
+const router = Router();
 
-// GET all roles with related permission group information
-router.get('/roles', async (req, res) => {
+// Get all permissions
+router.get('/permissions', async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const roles = await prisma.role.findMany({
-            include: { permissionGroup: true },
-        })
-        res.json(roles)
+        const permissions = await prisma.permission.findMany();
+        res.json(permissions);
     } catch (error) {
-        res.status(500).json({ error: 'Error fetching roles' })
+        console.error('Error fetching permissions:', error);
+        res.status(500).json({ error: 'Failed to fetch permissions' });
     }
-})
+});
 
-// Create a new role
-router.post('/roles', async (req, res) => {
+// Get a specific permission by ID
+router.get('/permissions/:id', async (req: Request, res: Response, next: NextFunction) => {
+    const { id } = req.params;
     try {
-        const { name, permissionGroupId } = req.body
-        const newRole = await prisma.role.create({
-            data: { name, permissionGroupId },
-        })
-        res.status(201).json(newRole)
-    } catch (error) {
-        res.status(500).json({ error: 'Error creating role' })
-    }
-})
-
-// Update an existing role
-router.put('/roles/:id', async (req, res) => {
-    try {
-        const { id } = req.params
-        const updatedRole = await prisma.role.update({
+        const permission = await prisma.permission.findUnique({
             where: { id },
-            data: req.body,
-        })
-        res.json(updatedRole)
+        });
+        if (permission) {
+            res.json(permission);
+        } else {
+            res.status(404).json({ error: 'Permission not found' });
+        }
     } catch (error) {
-        res.status(500).json({ error: 'Error updating role' })
+        console.error('Error fetching permission:', error);
+        res.status(500).json({ error: 'Failed to fetch permission' });
     }
-})
-
-// Delete a role
-router.delete('/roles/:id', async (req, res) => {
-    try {
-        const { id } = req.params
-        const deletedRole = await prisma.role.delete({
-            where: { id },
-        })
-        res.json(deletedRole)
-    } catch (error) {
-        res.status(500).json({ error: 'Error deleting role' })
-    }
-})
-
-// GET all permissions
-router.get('/permissions', async (req, res) => {
-    try {
-        const permissions = await prisma.permission.findMany()
-        res.json(permissions)
-    } catch (error) {
-        res.status(500).json({ error: 'Error fetching permissions' })
-    }
-})
+});
 
 // Create a new permission
-router.post('/permissions', async (req, res) => {
+router.post('/permissions', async (req: Request, res: Response, next: NextFunction) => {
+    const { name } = req.body;
     try {
-        const { name } = req.body
         const newPermission = await prisma.permission.create({
             data: { name },
-        })
-        res.status(201).json(newPermission)
+        });
+        res.status(201).json(newPermission);
     } catch (error) {
-        res.status(500).json({ error: 'Error creating permission' })
+        console.error('Error creating permission:', error);
+        res.status(500).json({ error: 'Failed to create permission' });
     }
-})
+});
 
 // Update an existing permission
-router.put('/permissions/:id', async (req, res) => {
+router.put('/permissions/:id', async (req: Request, res: Response, next: NextFunction) => {
+    const { id } = req.params;
+    const { name } = req.body;
     try {
-        const { id } = req.params
         const updatedPermission = await prisma.permission.update({
             where: { id },
-            data: req.body,
-        })
-        res.json(updatedPermission)
+            data: { name },
+        });
+        res.json(updatedPermission);
     } catch (error) {
-        res.status(500).json({ error: 'Error updating permission' })
+        console.error('Error updating permission:', error);
+        res.status(500).json({ error: 'Failed to update permission' });
     }
-})
+});
 
 // Delete a permission
-router.delete('/permissions/:id', async (req, res) => {
+router.delete('/permissions/:id', async (req: Request, res: Response, next: NextFunction) => {
+    const { id } = req.params;
     try {
-        const { id } = req.params
-        const deletedPermission = await prisma.permission.delete({
+        await prisma.permission.delete({
             where: { id },
-        })
-        res.json(deletedPermission)
+        });
+        res.status(204).end();
     } catch (error) {
-        res.status(500).json({ error: 'Error deleting permission' })
+        console.error('Error deleting permission:', error);
+        res.status(500).json({ error: 'Failed to delete permission' });
     }
-})
+});
 
-/* Permission Group Endpoints */
+// Get all roles
+router.get('/roles', async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const roles = await prisma.role.findMany();
+        res.json(roles);
+    } catch (error) {
+        console.error('Error fetching roles:', error);
+        res.status(500).json({ error: 'Failed to fetch roles' });
+    }
+});
 
-// GET all permission groups with associated permissions
-router.get('/permission-groups', async (req, res) => {
+// Get all users
+router.get('/users', async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const users = await prisma.user.findMany();
+        res.json(users);
+    } catch (error) {
+        console.error('Error fetching users:', error);
+        res.status(500).json({ error: 'Failed to fetch users' });
+    }
+});
+
+// Get permission groups for a specific role
+router.get('/roles/:roleId/permission-groups', async (req: Request, res: Response, next: NextFunction) => {
+    const { roleId } = req.params;
     try {
         const permissionGroups = await prisma.permissionGroup.findMany({
-            include: { permissions: { include: { permission: true } } },
-        })
-        res.json(permissionGroups)
+            where: { roles: { some: { id: roleId } } },
+            include: { permissions: true }
+        });
+        res.json(permissionGroups);
     } catch (error) {
-        res.status(500).json({ error: 'Error fetching permission groups' })
+        console.error('Error fetching permission groups:', error);
+        res.status(500).json({ error: 'Failed to fetch permission groups' });
     }
-})
+});
 
-// Create a new permission group
-router.post('/permission-groups', async (req, res) => {
+
+// Save permissions for a specific role
+router.post('/roles/:roleId/permissions', async (req: Request, res: Response, next: NextFunction) => {
+    const { roleId } = req.params;
+    const permissionGroups = req.body;
     try {
-        const { name } = req.body
-        const newGroup = await prisma.permissionGroup.create({
-            data: { name },
-        })
-        res.status(201).json(newGroup)
+        // Assuming you have a function to handle saving permissions
+        await savePermissions(roleId, permissionGroups);
+        res.status(200).json({ message: 'Permissions updated successfully' });
     } catch (error) {
-        res.status(500).json({ error: 'Error creating permission group' })
+        console.error('Error saving permissions:', error);
+        res.status(500).json({ error: 'Failed to save permissions' });
     }
-})
+});
 
-// Update an existing permission group
-router.put('/permission-groups/:id', async (req, res) => {
+const savePermissions = async (roleId: string, permissionGroups: any[]) => {
+    // Implement your logic to save permissions here
+    // This is just a placeholder function
+    // You might need to interact with your database to save the permissions
+};
+// Fetch role permission groups
+router.get('/roles/:roleId/permissions', async (req: Request, res: Response, next: NextFunction) => {
+    const { roleId } = req.params;
     try {
-        const { id } = req.params
-        const updatedGroup = await prisma.permissionGroup.update({
-            where: { id },
-            data: req.body,
-        })
-        res.json(updatedGroup)
+        const permissionGroups = await prisma.permissionGroup.findMany({
+            where: { roles: { some: { id: roleId } } },
+            include: { permissions: true }
+        });
+        res.json(permissionGroups);
     } catch (error) {
-        res.status(500).json({ error: 'Error updating permission group' })
+        console.error('Error fetching permission groups:', error);
+        res.status(500).json({ error: 'Failed to fetch permission groups' });
     }
-})
+});
 
-// Delete a permission group
-router.delete('/permission-groups/:id', async (req, res) => {
-    try {
-        const { id } = req.params
-        const deletedGroup = await prisma.permissionGroup.delete({
-            where: { id },
-        })
-        res.json(deletedGroup)
-    } catch (error) {
-        res.status(500).json({ error: 'Error deleting permission group' })
-    }
-})
-
-/* Permission On Group Endpoints */
-
-// GET all permission on group mappings (associating permissions to groups)
-router.get('/permission-on-groups', async (req, res) => {
-    try {
-        const mappings = await prisma.permissionOnGroup.findMany({
-            include: { permission: true, permissionGroup: true },
-        })
-        res.json(mappings)
-    } catch (error) {
-        res.status(500).json({ error: 'Error fetching permission on group mappings' })
-    }
-})
-
-// Create a new permission on group mapping
-router.post('/permission-on-groups', async (req, res) => {
-    try {
-        const { permissionId, permissionGroupId } = req.body
-        const newMapping = await prisma.permissionOnGroup.create({
-            data: { permissionId, permissionGroupId },
-        })
-        res.status(201).json(newMapping)
-    } catch (error) {
-        res.status(500).json({ error: 'Error creating permission on group mapping' })
-    }
-})
-
-// Delete a permission on group mapping
-router.delete('/permission-on-groups/:id', async (req, res) => {
-    try {
-        const { id } = req.params
-        const deletedMapping = await prisma.permissionOnGroup.delete({
-            where: { id },
-        })
-        res.json(deletedMapping)
-    } catch (error) {
-        res.status(500).json({ error: 'Error deleting permission on group mapping' })
-    }
-})
-
-/* User Permission Endpoints */
-
-// GET all user permissions
-router.get('/user-permissions', async (req, res) => {
-    try {
-        const userPermissions = await prisma.userPermission.findMany({
-            include: { user: true, permission: true },
-        })
-        res.json(userPermissions)
-    } catch (error) {
-        res.status(500).json({ error: 'Error fetching user permissions' })
-    }
-})
-
-// Create a new user permission
-router.post('/user-permissions', async (req, res) => {
-    try {
-        const { userId, permissionId } = req.body
-        const newUserPermission = await prisma.userPermission.create({
-            data: { userId, permissionId },
-        })
-        res.status(201).json(newUserPermission)
-    } catch (error) {
-        res.status(500).json({ error: 'Error creating user permission' })
-    }
-})
-
-// Delete a user permission
-router.delete('/user-permissions/:id', async (req, res) => {
-    try {
-        const { id } = req.params
-        const deletedUserPermission = await prisma.userPermission.delete({
-            where: { id },
-        })
-        res.json(deletedUserPermission)
-    } catch (error) {
-        res.status(500).json({ error: 'Error deleting user permission' })
-    }
-})
-
-export default router
+export default router;

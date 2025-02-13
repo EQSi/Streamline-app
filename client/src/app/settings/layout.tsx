@@ -1,8 +1,8 @@
 'use client';
 
-import Navbar from '@/app/(components)/Navbar';
-import Sidebar from '@/app/(components)/Sidebar';
-import { useAppSelector } from '@/app/redux';
+import Navbar from '@/src/app/(components)/Navbar';
+import Sidebar from '@/src/app/(components)/Sidebar';
+import { useAppSelector } from '@/src/app/redux';
 
 export default function SettingsLayout({
   children,

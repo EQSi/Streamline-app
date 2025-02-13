@@ -1,8 +1,8 @@
 'use client';
 
-import Sidebar from '@/app/(components)/Sidebar';
-import Navbar from '@/app/(components)/Navbar';
-import { useAppSelector } from '@/app/redux';
+import Sidebar from '@/src/app/(components)/Sidebar';
+import Navbar from '@/src/app/(components)/Navbar';
+import { useAppSelector } from '@/src/app/redux';
 import { useSession, SessionProvider } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';

@@ -5,7 +5,7 @@ import axios from 'axios';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { ChevronDown, ChevronUp } from 'lucide-react';
-import axiosInstance from '@/state/axios';
+import axiosInstance from '@/src/state/axios';
 
 export type CompanyType = 'Customer' | 'Subcontractor' | 'Vendor';
 

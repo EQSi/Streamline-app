@@ -1,9 +1,20 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
+import { useSession, signIn } from 'next-auth/react';
 
 export default function AdminLandingPage() {
     const router = useRouter();
+    const { data: session, status } = useSession();
+
+    if (status === 'loading') {
+        return <div>Loading...</div>;
+    }
+
+    if (status === 'unauthenticated') {
+        signIn();
+        return null;
+    }
 
     const navigateToUserManagement = () => {
         router.push('/admin/user-management');

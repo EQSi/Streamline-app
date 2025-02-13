@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 import Image from "next/image";
-import Logo from "@/assets/logo2.png";
+import Logo from "@/src/assets/logo2.png";
 
 const LoginForm = () => {
     const router = useRouter();

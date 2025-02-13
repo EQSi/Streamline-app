@@ -4,7 +4,7 @@ import bcrypt from 'bcryptjs';
 import { useRouter } from 'next/navigation';
 import React, { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
-import axiosInstance from '@/state/axios';
+import axiosInstance from '@/src/state/axios';
 
 // Helper to format phone numbers e.g. (123) 456-7890
 const formatPhoneNumber = (value: string) => {

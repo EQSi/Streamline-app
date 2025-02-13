@@ -2,9 +2,9 @@
 
 import { useSession, signIn, SessionProvider } from 'next-auth/react';
 import { useEffect } from 'react';
-import { useAppSelector } from '@/app/redux';
-import Navbar from '@/app/(components)/Navbar';
-import Sidebar from '@/app/(components)/Sidebar';
+import { useAppSelector } from '@/src/app/redux';
+import Navbar from '@/src/app/(components)/Navbar';
+import Sidebar from '@/src/app/(components)/Sidebar';
 import { useRouter } from 'next/navigation';
 
 

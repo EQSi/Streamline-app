@@ -1,11 +1,11 @@
 "use client";
 
-import { useAppDispatch, useAppSelector } from "@/app/redux";
-import { setIsSidebarCollapsed } from "@/state";
+import { useAppDispatch, useAppSelector } from "@/src/app/redux";
+import { setIsSidebarCollapsed } from "@/src/state";
 import { Search, Settings, Bell, LogOut, ArrowRightFromLineIcon, ArrowLeftFromLineIcon } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { useSession, signOut } from "next-auth/react";
-import axiosInstance from "@/state/axios";
+import axiosInstance from "@/src/state/axios";
 
 const Navbar = () => {
   const dispatch = useAppDispatch();

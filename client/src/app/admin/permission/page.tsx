@@ -1,330 +1,208 @@
 'use client';
 
-import { useState, useEffect, FormEvent } from 'react';
+import { useEffect, useState } from 'react';
+import { useAppSelector, RootState } from '@/src/app/redux';
+import { 
+    Table, 
+    TableBody, 
+    TableCell, 
+    TableHead, 
+    TableHeader, 
+    TableRow 
+} from '@/components/ui/table';
+import { Button } from '@/components/ui/button';
 import { useSession } from 'next-auth/react';
-import axios from 'axios';
+import { useToast } from '@/hooks/use-toast';
 
-type PermissionGroup = { id: string; name: string };
-type Role = { id: string; name: string; permissionGroupId: string };
-type Permission = { id: string; name: string };
-type User = { id: string; name: string; email: string; permissionGroupId?: string };
+interface Role {
+    id: string;
+    name: string;
+}
+interface PermissionGroup {
+    id: string;
+    name: string;
+    permissions: Permission[];
+}
+
+interface Permission {
+    id: string;
+    name: string;
+}
+
+interface User {
+    id: string;
+    username: string;
+    roleId: string;
+}
 
 export default function PermissionPage() {
-    const { data: session } = useSession();
-    const accessToken = session?.accessToken;
-
-    // Sidebar navigation state
-    const [sidebarSelection, setSidebarSelection] = useState<'roles' | 'permissionGroups' | 'users'>('roles');
-
-    // State for permission groups
-    const [groups, setGroups] = useState<PermissionGroup[]>([]);
-    const [newGroupName, setNewGroupName] = useState('');
-
-    // State for roles
+    const { toast } = useToast();
     const [roles, setRoles] = useState<Role[]>([]);
-    const [newRoleName, setNewRoleName] = useState('');
-    const [roleGroupId, setRoleGroupId] = useState('');
-    
-    // State for permissions
+    const [permissionGroups, setPermissionGroups] = useState<PermissionGroup[]>([]);
     const [permissions, setPermissions] = useState<Permission[]>([]);
-    const [newPermissionName, setNewPermissionName] = useState('');
-
-    // State for users and assignment
+    const [selectedRole, setSelectedRole] = useState<Role | null>(null);
     const [users, setUsers] = useState<User[]>([]);
-    const [selectedUserId, setSelectedUserId] = useState('');
-    const [selectedGroupForUser, setSelectedGroupForUser] = useState('');
+    const [selectedPermissionGroups, setSelectedPermissionGroups] = useState<PermissionGroup[]>([]);
+    const isDarkMode = useAppSelector((state: RootState) => state.global.isDarkMode);
+    const { data: session } = useSession();
 
-    // Helper function to get axios config with authentication headers.
-    const getAuthConfig = () => ({
-        headers: {
-            Authorization: `Bearer ${accessToken}`,
-        },
-    });
-
-    const fetchGroups = async () => {
-        try {
-            const { data } = await axios.get('https://localhost:8080/api/permission-groups', getAuthConfig());
-            setGroups(data);
-        } catch (error) {
-            console.error('Error fetching permission groups', error);
-        }
-    };
+    useEffect(() => {
+        fetchRoles();
+        fetchPermissions();
+        fetchUsers();
+    }, [session]);
 
     const fetchRoles = async () => {
         try {
-            const { data } = await axios.get('https://localhost:8080/api/roles', getAuthConfig());
+            const response = await fetch('https://localhost:8080/api/roles', {
+                headers: { "Authorization": `Bearer ${session?.accessToken}` }
+            });
+            const data = await response.json();
             setRoles(data);
         } catch (error) {
-            console.error('Error fetching roles', error);
+            toast({ title: "Error", description: "Failed to fetch roles", variant: "destructive" });
         }
     };
 
     const fetchPermissions = async () => {
         try {
-            const { data } = await axios.get('https://localhost:8080/api/permissions', getAuthConfig());
+            const response = await fetch('https://localhost:8080/api/permissions', {
+                headers: { "Authorization": `Bearer ${session?.accessToken}` }
+            });
+            const data = await response.json();
             setPermissions(data);
         } catch (error) {
-            console.error('Error fetching permissions', error);
+            toast({ title: "Error", description: "Failed to fetch permissions", variant: "destructive" });
         }
     };
 
     const fetchUsers = async () => {
         try {
-            const { data } = await axios.get('https://localhost:8080/api/users', getAuthConfig());
+            const response = await fetch('https://localhost:8080/api/users', {
+                headers: { "Authorization": `Bearer ${session?.accessToken}` }
+            });
+            const data = await response.json();
             setUsers(data);
         } catch (error) {
-            console.error('Error fetching users', error);
+            toast({ title: "Error", description: "Failed to fetch users", variant: "destructive" });
         }
     };
 
-    useEffect(() => {
-        if (accessToken) {
-            fetchGroups();
-            fetchRoles();
-            fetchPermissions();
-            fetchUsers();
-        }
-    }, [accessToken]);
-
-    // Handler to create a new permission group
-    const handleCreateGroup = async (e: FormEvent) => {
-        e.preventDefault();
+    const fetchRolePermissionGroups = async (roleId: string) => {
         try {
-            const { data: createdGroup } = await axios.post(
-                'https://localhost:8080/api/permission-groups',
-                { name: newGroupName },
-                getAuthConfig()
-            );
-            setGroups([...groups, createdGroup]);
-            setNewGroupName('');
+            const response = await fetch(`https://localhost:8080/api/roles/${roleId}/permissions`, {
+                headers: { "Authorization": `Bearer ${session?.accessToken}` }
+            });
+            const data = await response.json();
+            setSelectedPermissionGroups(data);
         } catch (error) {
-            console.error('Error creating permission group', error);
+            toast({ title: "Error", description: "Failed to fetch permissions", variant: "destructive" });
         }
     };
 
-    // Handler to create a new role
-    const handleCreateRole = async (e: FormEvent) => {
-        e.preventDefault();
-        try {
-            const { data: createdRole } = await axios.post(
-                'https://localhost:8080/api/roles',
-                { name: newRoleName, permissionGroupId: roleGroupId },
-                getAuthConfig()
-            );
-            setRoles([...roles, createdRole]);
-            setNewRoleName('');
-            setRoleGroupId('');
-        } catch (error) {
-            console.error('Error creating role', error);
-        }
+    const handleRoleSelection = (role: Role) => {
+        setSelectedRole(role);
+        fetchRolePermissionGroups(role.id);
     };
 
-    // Handler to create a new permission
-    const handleCreatePermission = async (e: FormEvent) => {
-        e.preventDefault();
-        try {
-            const { data: createdPermission } = await axios.post(
-                'https://localhost:8080/api/permissions',
-                { name: newPermissionName },
-                getAuthConfig()
-            );
-            setPermissions([...permissions, createdPermission]);
-            setNewPermissionName('');
-        } catch (error) {
-            console.error('Error creating permission', error);
-        }
+    const handlePermissionToggle = (permissionId: string) => {
+        if (!selectedRole) return;
+
+        const updatedPermissionGroups = selectedPermissionGroups.map(pg => {
+            const hasPermission = pg.permissions.some(p => p.id === permissionId);
+            if (hasPermission) {
+                return {
+                    ...pg,
+                    permissions: pg.permissions.filter(p => p.id !== permissionId)
+                };
+            } else {
+                return {
+                    ...pg,
+                    permissions: [...pg.permissions, permissions.find(p => p.id === permissionId)!]
+                };
+            }
+        });
+
+        setSelectedPermissionGroups(updatedPermissionGroups);
+        savePermissions(selectedRole.id, updatedPermissionGroups);
     };
 
-    // Handler to assign a user to a permission group
-    const handleAssignUser = async (e: FormEvent) => {
-        e.preventDefault();
+    const savePermissions = async (roleId: string, permissionGroups: PermissionGroup[]) => {
         try {
-            const { data: updatedUser } = await axios.post(
-                'https://localhost:8080/api/assign-user',
-                { userId: selectedUserId, permissionGroupId: selectedGroupForUser },
-                getAuthConfig()
-            );
-            setUsers(users.map((user) => user.id === updatedUser.id ? updatedUser : user));
-            setSelectedUserId('');
-            setSelectedGroupForUser('');
+            await fetch(`https://localhost:8080/api/roles/${roleId}/permissions`, {
+                method: 'POST',
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${session?.accessToken}`
+                },
+                body: JSON.stringify({ permissionGroups })
+            });
+            toast({ title: "Success", description: "Permissions updated successfully", variant: "success" });
         } catch (error) {
-            console.error('Error assigning user to permission group', error);
+            toast({ title: "Error", description: "Failed to save permissions", variant: "destructive" });
         }
     };
 
     return (
-        <div className="flex min-h-screen">
-            {/* Sidebar Navigation */}
-            <aside className="w-64 bg-gray-100 p-4 border-r border-gray-300">
-                <h2 className="text-xl font-bold mb-4">Admin Navigation</h2>
-                <ul>
-                    <li>
-                        <button
-                            className={`w-full text-left p-2 rounded mb-2 ${sidebarSelection === 'roles' ? 'bg-blue-600 text-white' : 'hover:bg-blue-200'}`}
-                            onClick={() => setSidebarSelection('roles')}
+        <div className="flex">
+            {/* Sidebar */}
+            <div className="w-1/4 bg-gray-100 dark:bg-gray-900 p-4">
+                <h2 className="text-xl font-semibold mb-4">Roles</h2>
+                <ul className="space-y-2">
+                    {roles.map((role) => (
+                        <li
+                            key={role.id}
+                            className={`p-2 rounded cursor-pointer ${selectedRole?.id === role.id ? 'bg-blue-500 text-white' : 'bg-white dark:bg-gray-800'}`}
+                            onClick={() => handleRoleSelection(role)}
                         >
-                            Roles Management
-                        </button>
-                    </li>
-                    <li>
-                        <button
-                            className={`w-full text-left p-2 rounded mb-2 ${sidebarSelection === 'permissionGroups' ? 'bg-blue-600 text-white' : 'hover:bg-blue-200'}`}
-                            onClick={() => setSidebarSelection('permissionGroups')}
-                        >
-                            Permission Groups
-                        </button>
-                    </li>
-                    <li>
-                        <button
-                            className={`w-full text-left p-2 rounded mb-2 ${sidebarSelection === 'users' ? 'bg-blue-600 text-white' : 'hover:bg-blue-200'}`}
-                            onClick={() => setSidebarSelection('users')}
-                        >
-                            Users Management
-                        </button>
-                    </li>
+                            {role.name}
+                        </li>
+                    ))}
                 </ul>
-            </aside>
+            </div>
 
-            {/* Main Content Area */}
-            <main className="flex-1 p-8">
-                {/* Roles Management */}
-                {sidebarSelection === 'roles' && (
-                    <section>
-                        <h2 className="text-2xl font-bold mb-4">Roles Management</h2>
-                        <form onSubmit={handleCreateRole} className="flex flex-col sm:flex-row sm:space-x-2 mb-4">
-                            <input
-                                type="text"
-                                placeholder="Role Name"
-                                value={newRoleName}
-                                onChange={(e) => setNewRoleName(e.target.value)}
-                                className="border border-gray-300 rounded p-2 flex-1 mb-2 sm:mb-0"
-                                required
-                            />
-                            <select
-                                value={roleGroupId}
-                                onChange={(e) => setRoleGroupId(e.target.value)}
-                                className="border border-gray-300 rounded p-2 mb-2 sm:mb-0"
-                                required
-                            >
-                                <option value="">Select Permission Group</option>
-                                {groups.map((group) => (
-                                    <option key={group.id} value={group.id}>
-                                        {group.name}
-                                    </option>
-                                ))}
-                            </select>
-                            <button type="submit" className="px-4 py-2 bg-green-600 text-white rounded">
-                                Add Role
-                            </button>
-                        </form>
-                        <ul className="list-disc ml-5">
-                            {roles.map((role) => (
-                                <li key={role.id} className="py-1">
-                                    {role.name} – Group: {groups.find((g) => g.id === role.permissionGroupId)?.name || 'None'}
+            {/* Main Content */}
+            <div className="w-3/4 p-4">
+                {selectedRole ? (
+                    <div>
+                        <h2 className="text-2xl font-bold mb-4">Permissions for {selectedRole.name}</h2>
+                        <h3 className="text-lg font-semibold">Assigned Permission Groups</h3>
+                        <ul className="space-y-2 mb-4">
+                            {selectedPermissionGroups.map(pg => (
+                                <li key={pg.id} className="p-2 bg-gray-200 dark:bg-gray-800 rounded">
+                                    {pg.name}
                                 </li>
                             ))}
                         </ul>
-                    </section>
-                )}
-
-                {/* Permission Groups Management */}
-                {sidebarSelection === 'permissionGroups' && (
-                    <section>
-                        <h2 className="text-2xl font-bold mb-4">Permission Groups</h2>
-                        <form onSubmit={handleCreateGroup} className="flex flex-col sm:flex-row sm:space-x-2 mb-4">
-                            <input
-                                type="text"
-                                placeholder="Group Name"
-                                value={newGroupName}
-                                onChange={(e) => setNewGroupName(e.target.value)}
-                                className="border border-gray-300 rounded p-2 flex-1 mb-2 sm:mb-0"
-                                required
-                            />
-                            <button type="submit" className="px-4 py-2 bg-green-600 text-white rounded">
-                                Create Group
-                            </button>
-                        </form>
-                        <ul className="list-disc ml-5">
-                            {groups.map((group) => (
-                                <li key={group.id} className="py-1">
-                                    {group.name}
-                                </li>
-                            ))}
-                        </ul>
-                    </section>
-                )}
-
-                {/* Users Management */}
-                {sidebarSelection === 'users' && (
-                    <section>
-                        <h2 className="text-2xl font-bold mb-4">Users Management</h2>
-                        <form onSubmit={handleAssignUser} className="flex flex-col sm:flex-row sm:space-x-2 mb-4">
-                            <select
-                                value={selectedUserId}
-                                onChange={(e) => setSelectedUserId(e.target.value)}
-                                className="border border-gray-300 rounded p-2 mb-2 sm:mb-0"
-                                required
-                            >
-                                <option value="">Select User</option>
-                                {users.map((user) => (
-                                    <option key={user.id} value={user.id}>
-                                        {user.name} ({user.email})
-                                    </option>
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Permission</TableHead>
+                                    <TableHead>Assigned</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {permissions.map((permission) => (
+                                    <TableRow key={permission.id}>
+                                        <TableCell>{permission.name}</TableCell>
+                                        <TableCell>
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedPermissionGroups.some(pg => pg.permissions.some(p => p.id === permission.id))}
+                                                onChange={() => handlePermissionToggle(permission.id)}
+                                            />
+                                        </TableCell>
+                                    </TableRow>
                                 ))}
-                            </select>
-                            <select
-                                value={selectedGroupForUser}
-                                onChange={(e) => setSelectedGroupForUser(e.target.value)}
-                                className="border border-gray-300 rounded p-2 mb-2 sm:mb-0"
-                                required
-                            >
-                                <option value="">Select Permission Group</option>
-                                {groups.map((group) => (
-                                    <option key={group.id} value={group.id}>
-                                        {group.name}
-                                    </option>
-                                ))}
-                            </select>
-                            <button type="submit" className="px-4 py-2 bg-green-600 text-white rounded">
-                                Assign Group
-                            </button>
-                        </form>
-                        <h3 className="text-xl font-semibold mb-2">User Assignments</h3>
-                        <ul className="list-disc ml-5">
-                            {users.map((user) => (
-                                <li key={user.id} className="py-1">
-                                    {user.name} – Group: {groups.find((g) => g.id === user.permissionGroupId)?.name || 'None'}
-                                </li>
-                            ))}
-                        </ul>
-                    </section>
+                            </TableBody>
+                        </Table>
+                    </div>
+                ) : (
+                    <div className="text-center">
+                        <h2 className="text-2xl font-bold">Select a role to view permissions</h2>
+                    </div>
                 )}
-
-                {/* Permissions Table – common for all pages or placed independently */}
-                <section className="mt-8">
-                    <h2 className="text-2xl font-bold mb-4">Permissions Table</h2>
-                    <form onSubmit={handleCreatePermission} className="flex flex-col sm:flex-row sm:space-x-2 mb-4">
-                        <input
-                            type="text"
-                            placeholder="Permission Name"
-                            value={newPermissionName}
-                            onChange={(e) => setNewPermissionName(e.target.value)}
-                            className="border border-gray-300 rounded p-2 flex-1 mb-2 sm:mb-0"
-                            required
-                        />
-                        <button type="submit" className="px-4 py-2 bg-green-600 text-white rounded">
-                            Add Permission
-                        </button>
-                    </form>
-                    <ul className="list-disc ml-5">
-                        {permissions.map((perm) => (
-                            <li key={perm.id} className="py-1">
-                                {perm.name}
-                            </li>
-                        ))}
-                    </ul>
-                </section>
-            </main>
+            </div>
         </div>
     );
 }

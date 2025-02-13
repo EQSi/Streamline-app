@@ -1,8 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { useAppDispatch, useAppSelector } from '@/app/redux';
-import { setIsDarkMode } from '@/state';
+import { useAppDispatch, useAppSelector } from '@/src/app/redux';
+import { setIsDarkMode } from '@/src/state';
 
 export default function SettingsPage() {
   const dispatch = useAppDispatch();

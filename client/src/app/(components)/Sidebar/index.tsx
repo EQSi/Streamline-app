@@ -1,6 +1,6 @@
 "use client";
 
-import { useAppDispatch, useAppSelector } from '@/app/redux';
+import { useAppDispatch, useAppSelector } from '@/src/app/redux';
 import React from 'react';
 import {
   Calendar,
@@ -20,11 +20,11 @@ import {
   ArrowLeftFromLineIcon,
 } from 'lucide-react';
 import Link from 'next/link';
-import { setIsSidebarCollapsed } from '@/state';
+import { setIsSidebarCollapsed } from '@/src/state';
 import { usePathname } from 'next/navigation';
 import Image from 'next/image';
-import Logo from '@/assets/logo.png';
-import Logo3 from '@/assets/logo2.png';
+import Logo from '@/src/assets/logo.png';
+import Logo3 from '@/src/assets/logo2.png';
 
 interface SidebarLinkProps {
   href: string;
