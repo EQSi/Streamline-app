@@ -1,20 +1,21 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useAppSelector, RootState } from '@/src/app/redux';
-import { 
-    Table, 
-    TableBody, 
-    TableCell, 
-    TableHead, 
-    TableHeader, 
-    TableRow 
-} from '@/components/ui/table';
-import { Button } from '@/components/ui/button';
 import { useSession } from 'next-auth/react';
 import { useToast } from '@/hooks/use-toast';
 
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { cn } from "@/lib/utils";
+
 interface Role {
+    id: string;
+    name: string;
+}
+interface Permission {
     id: string;
     name: string;
 }
@@ -24,185 +25,166 @@ interface PermissionGroup {
     permissions: Permission[];
 }
 
-interface Permission {
-    id: string;
-    name: string;
-}
-
-interface User {
-    id: string;
-    username: string;
-    roleId: string;
-}
-
 export default function PermissionPage() {
+    const { data: session } = useSession();
     const { toast } = useToast();
     const [roles, setRoles] = useState<Role[]>([]);
-    const [permissionGroups, setPermissionGroups] = useState<PermissionGroup[]>([]);
-    const [permissions, setPermissions] = useState<Permission[]>([]);
+    const [allGroups, setAllGroups] = useState<PermissionGroup[]>([]);
     const [selectedRole, setSelectedRole] = useState<Role | null>(null);
-    const [users, setUsers] = useState<User[]>([]);
-    const [selectedPermissionGroups, setSelectedPermissionGroups] = useState<PermissionGroup[]>([]);
-    const isDarkMode = useAppSelector((state: RootState) => state.global.isDarkMode);
-    const { data: session } = useSession();
+    const [assignedGroups, setAssignedGroups] = useState<PermissionGroup[]>([]);
+
+    const token = session?.accessToken;
 
     useEffect(() => {
-        fetchRoles();
-        fetchPermissions();
-        fetchUsers();
-    }, [session]);
+        if (!token) return;
+        loadRoles();
+        loadPermissionGroups();
+    }, [token]);
 
-    const fetchRoles = async () => {
+    async function loadRoles() {
         try {
-            const response = await fetch('https://localhost:8080/api/roles', {
-                headers: { "Authorization": `Bearer ${session?.accessToken}` }
+            const res = await fetch('https://localhost:8080/api/roles', {
+                headers: { Authorization: `Bearer ${token}` }
             });
-            const data = await response.json();
-            setRoles(data);
-        } catch (error) {
-            toast({ title: "Error", description: "Failed to fetch roles", variant: "destructive" });
+            if (!res.ok) throw new Error();
+            setRoles(await res.json());
+        } catch {
+            toast({ title: 'Error', description: 'Failed to fetch roles', variant: 'destructive' });
         }
-    };
+    }
 
-    const fetchPermissions = async () => {
+    async function loadPermissionGroups() {
         try {
-            const response = await fetch('https://localhost:8080/api/permissions', {
-                headers: { "Authorization": `Bearer ${session?.accessToken}` }
+            const res = await fetch('https://localhost:8080/api/permissions', {
+                headers: { Authorization: `Bearer ${token}` }
             });
-            const data = await response.json();
-            setPermissions(data);
-        } catch (error) {
-            toast({ title: "Error", description: "Failed to fetch permissions", variant: "destructive" });
+            if (!res.ok) throw new Error();
+            setAllGroups(await res.json());
+        } catch {
+            toast({ title: 'Error', description: 'Failed to fetch permission groups', variant: 'destructive' });
         }
-    };
+    }
 
-    const fetchUsers = async () => {
+    async function loadRolePermissions(roleId: string) {
         try {
-            const response = await fetch('https://localhost:8080/api/users', {
-                headers: { "Authorization": `Bearer ${session?.accessToken}` }
+            const res = await fetch(`https://localhost:8080/api/roles/${roleId}/permissions`, {
+                headers: { Authorization: `Bearer ${token}` }
             });
-            const data = await response.json();
-            setUsers(data);
-        } catch (error) {
-            toast({ title: "Error", description: "Failed to fetch users", variant: "destructive" });
+            if (!res.ok) throw new Error();
+            setAssignedGroups(await res.json());
+        } catch {
+            toast({ title: 'Error', description: 'Failed to fetch role permissions', variant: 'destructive' });
         }
-    };
+    }
 
-    const fetchRolePermissionGroups = async (roleId: string) => {
-        try {
-            const response = await fetch(`https://localhost:8080/api/roles/${roleId}/permissions`, {
-                headers: { "Authorization": `Bearer ${session?.accessToken}` }
-            });
-            const data = await response.json();
-            setSelectedPermissionGroups(data);
-        } catch (error) {
-            toast({ title: "Error", description: "Failed to fetch permissions", variant: "destructive" });
-        }
-    };
-
-    const handleRoleSelection = (role: Role) => {
-        setSelectedRole(role);
-        fetchRolePermissionGroups(role.id);
-    };
-
-    const handlePermissionToggle = (permissionId: string) => {
-        if (!selectedRole) return;
-
-        const updatedPermissionGroups = selectedPermissionGroups.map(pg => {
-            const hasPermission = pg.permissions.some(p => p.id === permissionId);
-            if (hasPermission) {
-                return {
-                    ...pg,
-                    permissions: pg.permissions.filter(p => p.id !== permissionId)
-                };
-            } else {
-                return {
-                    ...pg,
-                    permissions: [...pg.permissions, permissions.find(p => p.id === permissionId)!]
-                };
+    function togglePermission(groupId: string, permission: Permission) {
+        setAssignedGroups((prev) => {
+            const group = prev.find((g) => g.id === groupId);
+            if (!group) {
+                const fullGroup = allGroups.find((g) => g.id === groupId);
+                if (!fullGroup) return prev;
+                return [...prev, { ...fullGroup, permissions: [permission] }];
             }
+            const hasPermission = group.permissions.some((p) => p.id === permission.id);
+            const updatedPermissions = hasPermission
+                ? group.permissions.filter((p) => p.id !== permission.id)
+                : [...group.permissions, permission];
+            if (!updatedPermissions.length) {
+                return prev.filter((g) => g.id !== groupId);
+            }
+            return prev.map((g) =>
+                g.id === groupId ? { ...g, permissions: updatedPermissions } : g
+            );
         });
+    }
 
-        setSelectedPermissionGroups(updatedPermissionGroups);
-        savePermissions(selectedRole.id, updatedPermissionGroups);
-    };
-
-    const savePermissions = async (roleId: string, permissionGroups: PermissionGroup[]) => {
+    async function saveRolePermissions() {
+        if (!selectedRole) return;
         try {
-            await fetch(`https://localhost:8080/api/roles/${roleId}/permissions`, {
+            const res = await fetch(`https://localhost:8080/api/roles/${selectedRole.id}/permissions`, {
                 method: 'POST',
                 headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": `Bearer ${session?.accessToken}`
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`
                 },
-                body: JSON.stringify({ permissionGroups })
+                body: JSON.stringify({ permissionGroups: assignedGroups })
             });
-            toast({ title: "Success", description: "Permissions updated successfully", variant: "success" });
-        } catch (error) {
-            toast({ title: "Error", description: "Failed to save permissions", variant: "destructive" });
+            if (!res.ok) throw new Error();
+            toast({ title: 'Success', description: 'Permissions saved', variant: 'default' });
+        } catch {
+            toast({ title: 'Error', description: 'Failed to save permissions', variant: 'destructive' });
         }
-    };
+    }
 
     return (
-        <div className="flex">
-            {/* Sidebar */}
-            <div className="w-1/4 bg-gray-100 dark:bg-gray-900 p-4">
-                <h2 className="text-xl font-semibold mb-4">Roles</h2>
-                <ul className="space-y-2">
+        <div className="flex gap-4">
+            <Card className="w-1/4">
+                <CardHeader>
+                    <CardTitle>Roles</CardTitle>
+                </CardHeader>
+                <ScrollArea className="max-h-[70vh]">
                     {roles.map((role) => (
-                        <li
+                        <div
                             key={role.id}
-                            className={`p-2 rounded cursor-pointer ${selectedRole?.id === role.id ? 'bg-blue-500 text-white' : 'bg-white dark:bg-gray-800'}`}
-                            onClick={() => handleRoleSelection(role)}
+                            className={cn(
+                                "cursor-pointer p-2 rounded text-sm",
+                                selectedRole?.id === role.id
+                                    ? "bg-primary text-primary-foreground"
+                                    : "hover:bg-muted"
+                            )}
+                            onClick={() => {
+                                setSelectedRole(role);
+                                loadRolePermissions(role.id);
+                            }}
                         >
                             {role.name}
-                        </li>
+                        </div>
                     ))}
-                </ul>
-            </div>
+                </ScrollArea>
+            </Card>
 
-            {/* Main Content */}
-            <div className="w-3/4 p-4">
-                {selectedRole ? (
-                    <div>
-                        <h2 className="text-2xl font-bold mb-4">Permissions for {selectedRole.name}</h2>
-                        <h3 className="text-lg font-semibold">Assigned Permission Groups</h3>
-                        <ul className="space-y-2 mb-4">
-                            {selectedPermissionGroups.map(pg => (
-                                <li key={pg.id} className="p-2 bg-gray-200 dark:bg-gray-800 rounded">
-                                    {pg.name}
-                                </li>
-                            ))}
-                        </ul>
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Permission</TableHead>
-                                    <TableHead>Assigned</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {permissions.map((permission) => (
-                                    <TableRow key={permission.id}>
-                                        <TableCell>{permission.name}</TableCell>
-                                        <TableCell>
-                                            <input
-                                                type="checkbox"
-                                                checked={selectedPermissionGroups.some(pg => pg.permissions.some(p => p.id === permission.id))}
-                                                onChange={() => handlePermissionToggle(permission.id)}
-                                            />
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    </div>
-                ) : (
-                    <div className="text-center">
-                        <h2 className="text-2xl font-bold">Select a role to view permissions</h2>
-                    </div>
+            <Card className="flex-1">
+                <CardHeader>
+                    <CardTitle>
+                        {selectedRole
+                            ? `Permissions for ${selectedRole.name}`
+                            : "Select a role to view permissions"}
+                    </CardTitle>
+                </CardHeader>
+                {selectedRole && (
+                    <CardContent>
+                        <Accordion type="multiple">
+                            {allGroups.map((group) => {
+                                const isAssigned = assignedGroups.find((g) => g.id === group.id);
+                                return (
+                                    <AccordionItem key={group.id} value={group.id}>
+                                        <AccordionTrigger className="font-semibold">
+                                            {group.name}
+                                        </AccordionTrigger>
+                                        <AccordionContent className="space-y-2 mt-2">
+                                            {group.permissions.map((perm) => {
+                                                const assigned = isAssigned?.permissions.some((p) => p.id === perm.id);
+                                                return (
+                                                    <div key={perm.id} className="flex items-center gap-2">
+                                                        <Checkbox
+                                                            checked={!!assigned}
+                                                            onCheckedChange={() => togglePermission(group.id, perm)}
+                                                        />
+                                                        <span>{perm.name}</span>
+                                                    </div>
+                                                );
+                                            })}
+                                        </AccordionContent>
+                                    </AccordionItem>
+                                );
+                            })}
+                        </Accordion>
+                        <Button className="mt-4" onClick={saveRolePermissions}>
+                            Save Permissions
+                        </Button>
+                    </CardContent>
                 )}
-            </div>
+            </Card>
         </div>
     );
 }

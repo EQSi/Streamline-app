@@ -5,14 +5,13 @@ import { useEffect } from 'react';
 import { useAppSelector } from '@/src/app/redux';
 
 export default function PermissionLayout({ children }: { children: React.ReactNode }) {
-    const { data: session, status } = useSession();
-    const isDarkMode = useAppSelector((state) => state.global.isDarkMode);
-
-    useEffect(() => {
-        if (status === 'unauthenticated') {
+    const { data: session, status } = useSession({
+        required: true,
+        onUnauthenticated() {
             signIn();
-        }
-    }, [status]);
+        },
+    });
+    const isDarkMode = useAppSelector((state) => state.global.isDarkMode);
 
     if (status === 'loading') {
         return (

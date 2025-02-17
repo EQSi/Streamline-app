@@ -60,7 +60,7 @@ const Navbar = () => {
   };
 
   return (
-    <div className="flex justify-between items-center w-full mb-3 figtree-font">
+    <div className="flex justify-between items-center w-full figtree-font">
       <div className="flex items-center gap-4">
         <button
           className="px-2 py-2 bg-gray-300 rounded-full hover:bg-blue-100"

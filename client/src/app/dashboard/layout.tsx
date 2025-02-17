@@ -65,7 +65,7 @@ function DashboardLayoutContent({
     >
       <Sidebar />
       <main
-        className={`flex flex-col flex-1 py-7 px-9 bg-gray-50 transition-all duration-300 z-0 ${
+        className={`flex flex-col flex-1 py-7 px-4 bg-gray-50 transition-all duration-300 z-0 ${
           isSidebarCollapsed ? 'ml-20' : 'ml-72'
         }`}
       >
