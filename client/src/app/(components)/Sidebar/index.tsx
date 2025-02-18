@@ -16,8 +16,6 @@ import {
   Wrench,
   UserPen,
   Building2,
-  ArrowRightFromLineIcon,
-  ArrowLeftFromLineIcon,
 } from 'lucide-react';
 import Link from 'next/link';
 import { setIsSidebarCollapsed } from '@/src/state';
@@ -39,15 +37,15 @@ const SidebarLink = ({ href, icon: Icon, label, isCollapsed }: SidebarLinkProps)
   return (
     <Link href={href}>
       <div
-        className={`cursor-pointer flex items-center ${
+        className={`cursor-pointer flex items-center group ${
           isCollapsed ? 'justify-center py-4' : 'justify-start px-8 py-4'
-        } hover:text-blue-500 hover:bg-gray-400 gap-1 transition-colors ${
-          isActive ? 'bg-white text-white' : ''
+        } hover:text-white hover:bg-[radial-gradient(circle,_#414a9e,_#29abe2)] gap-1 transition-colors ${
+          isActive ? 'bg-[radial-gradient(circle,_#29abe2,_#414a9e)] text-white' : 'text-gray-900'
         } figtree-font`}
       >
-        <Icon className="w-6 h-6 !text-gray-900" />
+        <Icon className={`w-6 h-6 ${isActive ? '!text-white' : 'group-hover:!text-white'}`} />
         {!isCollapsed && (
-          <span className="font-semibold text-gray-700 text-md">
+          <span className={`font-semibold text-md ${isActive ? 'text-white' : 'text-gray-700 group-hover:text-white'}`}>
             {label}
           </span>
         )}
@@ -67,8 +65,7 @@ const Sidebar = () => {
   };
   const sidebarClassNames = `fixed top-0 bottom-0 z-0 flex flex-col ${
     isSidebarCollapsed ? 'w-0 md:w-16' : 'w-72 md:w-64'
-  } bg-gradient-to-b bg-[length:100%_200%] from-blue-50 to-blue-200 transition-all duration-300 overflow-visible shadow-md z-40 figtree-font`;
-  
+  } bg-gradient-to-b bg-[length:50%_150%] from-[#ffffff] to-[#e4f0ff] transition-all duration-300 overflow-visible shadow-md z-40 figtree-font`;
 
   return (
     <div className={`bg-gray-200 ${sidebarClassNames}`}>

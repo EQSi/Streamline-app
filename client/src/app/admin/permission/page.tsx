@@ -2,189 +2,211 @@
 
 import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
-import { useToast } from '@/hooks/use-toast';
+import axios from 'axios';
+import { useAbility } from '@/src/context/abilityContext'; // Adjust the import path as needed
 
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import { cn } from "@/lib/utils";
-
-interface Role {
-    id: string;
-    name: string;
-}
 interface Permission {
     id: string;
     name: string;
 }
+
+interface PermissionOnGroup {
+    id: string;
+    permissionId: string;
+    permission: Permission;
+}
+
 interface PermissionGroup {
     id: string;
     name: string;
-    permissions: Permission[];
+    permissions: PermissionOnGroup[];
 }
 
-export default function PermissionPage() {
-    const { data: session } = useSession();
-    const { toast } = useToast();
-    const [roles, setRoles] = useState<Role[]>([]);
-    const [allGroups, setAllGroups] = useState<PermissionGroup[]>([]);
-    const [selectedRole, setSelectedRole] = useState<Role | null>(null);
-    const [assignedGroups, setAssignedGroups] = useState<PermissionGroup[]>([]);
+interface Role {
+    id: string;
+    name: string;
+    permissionGroup: PermissionGroup | null;
+}
 
-    const token = session?.accessToken;
+const formatRoleName = (name: string) => {
+    return name
+        .toLowerCase()
+        .split('_')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ');
+};
+
+export default function PermissionManagementPage() {
+    const { data: session } = useSession();
+    const ability = useAbility();
+    const [roles, setRoles] = useState<Role[]>([]);
+    const [selectedRole, setSelectedRole] = useState<Role | null>(null);
+    const [permissions, setPermissions] = useState<Permission[]>([]);
+    const [loading, setLoading] = useState<boolean>(true);
+    const [userRole, setUserRole] = useState<string>(''); // Store current user's role name
 
     useEffect(() => {
-        if (!token) return;
-        loadRoles();
-        loadPermissionGroups();
-    }, [token]);
+        const fetchRolesAndPermissions = async () => {
+            if (!session) return;
 
-    async function loadRoles() {
-        try {
-            const res = await fetch('https://localhost:8080/api/roles', {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            if (!res.ok) throw new Error();
-            setRoles(await res.json());
-        } catch {
-            toast({ title: 'Error', description: 'Failed to fetch roles', variant: 'destructive' });
-        }
-    }
+            try {
+                const userResponse = await axios.get(`https://localhost:8080/api/users/${session.user.id}`, {
+                    headers: {
+                        Authorization: `Bearer ${session.accessToken}`,
+                    },
+                });
+                // Assume userResponse.data.role is an object with a name field.
+                const fetchedUserRole = userResponse.data.role;
+                setUserRole(fetchedUserRole.name);
 
-    async function loadPermissionGroups() {
-        try {
-            const res = await fetch('https://localhost:8080/api/permissions', {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            if (!res.ok) throw new Error();
-            setAllGroups(await res.json());
-        } catch {
-            toast({ title: 'Error', description: 'Failed to fetch permission groups', variant: 'destructive' });
-        }
-    }
+                const [rolesRes, permissionsRes] = await Promise.all([
+                    axios.get('https://localhost:8080/api/roles', {
+                        headers: { "Authorization": `Bearer ${session.accessToken}` }
+                    }),
+                    axios.get('https://localhost:8080/api/permissions', {
+                        headers: { "Authorization": `Bearer ${session.accessToken}` }
+                    })
+                ]);
 
-    async function loadRolePermissions(roleId: string) {
-        try {
-            const res = await fetch(`https://localhost:8080/api/roles/${roleId}/permissions`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            if (!res.ok) throw new Error();
-            setAssignedGroups(await res.json());
-        } catch {
-            toast({ title: 'Error', description: 'Failed to fetch role permissions', variant: 'destructive' });
-        }
-    }
+                const rolesData = await Promise.all(rolesRes.data.map(async (role: Role) => {
+                    try {
+                        const permissionGroupRes = await axios.get(`https://localhost:8080/api/roles/${role.id}/permission-group`, {
+                            headers: { "Authorization": `Bearer ${session.accessToken}` }
+                        });
+                        return { ...role, permissionGroup: { ...permissionGroupRes.data, name: permissionGroupRes.data.name || '' } };
+                    } catch (error) {
+                        if (axios.isAxiosError(error) && error.response?.status === 404) {
+                            console.warn(`Permission group not found for role ${role.id}`);
+                            return { ...role, permissionGroup: null };
+                        } else {
+                            console.error(`Error fetching permission group for role ${role.id}:`, error);
+                            return { ...role, permissionGroup: null };
+                        }
+                    }
+                }));
 
-    function togglePermission(groupId: string, permission: Permission) {
-        setAssignedGroups((prev) => {
-            const group = prev.find((g) => g.id === groupId);
-            if (!group) {
-                const fullGroup = allGroups.find((g) => g.id === groupId);
-                if (!fullGroup) return prev;
-                return [...prev, { ...fullGroup, permissions: [permission] }];
+                setRoles(rolesData);
+                setPermissions(permissionsRes.data);
+                setLoading(false);
+            } catch (error) {
+                console.error('Error fetching data:', error);
+                setLoading(false);
             }
-            const hasPermission = group.permissions.some((p) => p.id === permission.id);
-            const updatedPermissions = hasPermission
-                ? group.permissions.filter((p) => p.id !== permission.id)
-                : [...group.permissions, permission];
-            if (!updatedPermissions.length) {
-                return prev.filter((g) => g.id !== groupId);
-            }
-            return prev.map((g) =>
-                g.id === groupId ? { ...g, permissions: updatedPermissions } : g
+        };
+        fetchRolesAndPermissions();
+    }, [session]);
+
+    const handleRoleChange = (roleId: string) => {
+        setSelectedRole(roles.find(r => r.id === roleId) || null);
+    };
+
+    const handlePermissionToggle = async (permissionId: string) => {
+        if (!selectedRole || !selectedRole.permissionGroup) return;
+        
+        const hasPermission = selectedRole.permissionGroup.permissions.some(p => p.permissionId === permissionId);
+        const updatedPermissions = hasPermission
+            ? selectedRole.permissionGroup.permissions.filter(p => p.permissionId !== permissionId)
+            : [
+                  ...selectedRole.permissionGroup.permissions,
+                  { id: permissionId, permissionId, permission: permissions.find(p => p.id === permissionId)! }
+              ];
+        
+        try {
+            await axios.post(`https://localhost:8080/api/permission-groups/${selectedRole.permissionGroup.id}/permissions`, {
+                permissionIds: updatedPermissions.map(p => p.permissionId),
+            }, {
+                headers: { "Authorization": `Bearer ${session.accessToken}` }
+            });
+            
+            setRoles(roles.map(role =>
+                role.id === selectedRole.id
+                    ? {
+                          ...role,
+                          permissionGroup: {
+                              ...role.permissionGroup,
+                              permissions: updatedPermissions
+                          }
+                      }
+                    : role
+            ));
+            setSelectedRole(prev => prev
+                ? { 
+                      ...prev, 
+                      permissionGroup: { 
+                          ...prev.permissionGroup, 
+                          permissions: updatedPermissions 
+                      } 
+                  }
+                : null
             );
-        });
+        } catch (error) {
+            console.error('Error updating permissions:', error);
+        }
+    };
+
+    if (loading) {
+        return <div className="flex justify-center items-center min-h-screen">Loading...</div>;
     }
 
-    async function saveRolePermissions() {
-        if (!selectedRole) return;
-        try {
-            const res = await fetch(`https://localhost:8080/api/roles/${selectedRole.id}/permissions`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${token}`
-                },
-                body: JSON.stringify({ permissionGroups: assignedGroups })
-            });
-            if (!res.ok) throw new Error();
-            toast({ title: 'Success', description: 'Permissions saved', variant: 'default' });
-        } catch {
-            toast({ title: 'Error', description: 'Failed to save permissions', variant: 'destructive' });
-        }
+    // Use the userRole from fetched data along with ability checks to determine access.
+    const canAccessPage = ability.can('manage', 'Role') || userRole === 'ADMIN';
+
+    if (!canAccessPage) {
+        return (
+            <div className="flex justify-center items-center min-h-screen">
+                You do not have access to this page.
+            </div>
+        );
     }
+
+    // Debug logging
+    console.log('Current ability:', ability);
+    console.log('Can manage role:', ability.can('manage', 'Role'));
+    console.log('Selected role:', selectedRole);
 
     return (
-        <div className="flex gap-4">
-            <Card className="w-1/4">
-                <CardHeader>
-                    <CardTitle>Roles</CardTitle>
-                </CardHeader>
-                <ScrollArea className="max-h-[70vh]">
-                    {roles.map((role) => (
-                        <div
-                            key={role.id}
-                            className={cn(
-                                "cursor-pointer p-2 rounded text-sm",
-                                selectedRole?.id === role.id
-                                    ? "bg-primary text-primary-foreground"
-                                    : "hover:bg-muted"
-                            )}
-                            onClick={() => {
-                                setSelectedRole(role);
-                                loadRolePermissions(role.id);
-                            }}
-                        >
-                            {role.name}
-                        </div>
-                    ))}
-                </ScrollArea>
-            </Card>
-
-            <Card className="flex-1">
-                <CardHeader>
-                    <CardTitle>
-                        {selectedRole
-                            ? `Permissions for ${selectedRole.name}`
-                            : "Select a role to view permissions"}
-                    </CardTitle>
-                </CardHeader>
-                {selectedRole && (
-                    <CardContent>
-                        <Accordion type="multiple">
-                            {allGroups.map((group) => {
-                                const isAssigned = assignedGroups.find((g) => g.id === group.id);
-                                return (
-                                    <AccordionItem key={group.id} value={group.id}>
-                                        <AccordionTrigger className="font-semibold">
-                                            {group.name}
-                                        </AccordionTrigger>
-                                        <AccordionContent className="space-y-2 mt-2">
-                                            {group.permissions.map((perm) => {
-                                                const assigned = isAssigned?.permissions.some((p) => p.id === perm.id);
-                                                return (
-                                                    <div key={perm.id} className="flex items-center gap-2">
-                                                        <Checkbox
-                                                            checked={!!assigned}
-                                                            onCheckedChange={() => togglePermission(group.id, perm)}
-                                                        />
-                                                        <span>{perm.name}</span>
-                                                    </div>
-                                                );
-                                            })}
-                                        </AccordionContent>
-                                    </AccordionItem>
-                                );
-                            })}
-                        </Accordion>
-                        <Button className="mt-4" onClick={saveRolePermissions}>
-                            Save Permissions
-                        </Button>
-                    </CardContent>
-                )}
-            </Card>
+        <div className="flex flex-col items-start min-h-screen bg-gray-50 py-4 px-4">
+            <h1 className="text-2xl font-bold mb-2">Permission Management</h1>
+            <div className="flex w-full">
+                {/* Role Selection */}
+                <div className="w-1/3 pr-2">
+                    <h2 className="text-lg font-semibold mb-2">Roles</h2>
+                    <ul className="bg-white rounded-lg shadow-md p-2 divide-y">
+                        {roles.map(role => (
+                            <li
+                                key={role.id}
+                                className={`p-2 cursor-pointer ${selectedRole?.id === role.id ? 'bg-indigo-100' : ''}`}
+                                onClick={() => handleRoleChange(role.id)}
+                            >
+                                {formatRoleName(role.name)}
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+                {/* Permissions */}
+                <div className="w-2/3 pl-4">
+                    {selectedRole && selectedRole.permissionGroup && (
+                        <>
+                            <h2 className="text-lg font-semibold mb-2">
+                                Permissions for {formatRoleName(selectedRole.name)}
+                            </h2>
+                            <div className="grid grid-cols-2 gap-2 bg-white rounded-lg shadow-md p-4">
+                                {permissions.map(permission => (
+                                    <div key={permission.id} className="flex items-center">
+                                        <input
+                                            type="checkbox"
+                                            checked={selectedRole.permissionGroup.permissions.some(p => p.permissionId === permission.id)}
+                                            onChange={() => handlePermissionToggle(permission.id)}
+                                            className="h-4 w-4 text-indigo-600 border-gray-300 rounded"
+                                        />
+                                        <label className="ml-2 text-sm text-gray-900">{permission.name}</label>
+                                    </div>
+                                ))}
+                            </div>
+                        </>
+                    )}
+                </div>
+            </div>
         </div>
     );
 }

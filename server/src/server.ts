@@ -25,7 +25,7 @@ const options = {
 // Apply CORS middleware
 app.use(cors({
   origin: 'https://localhost:3000', // Adjust this based on your frontend URL
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   credentials: true,
 }));
 

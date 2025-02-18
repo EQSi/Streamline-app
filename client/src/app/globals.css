@@ -98,8 +98,3 @@ body,
   font-style: normal;
 }
 
-@layer utilities {
-  .border-border {
-    @apply border;
-  }
-}

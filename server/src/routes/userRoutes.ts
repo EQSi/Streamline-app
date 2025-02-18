@@ -31,9 +31,26 @@ router.get('/users/:id', async (req: Request, res: Response): Promise<void> => {
       select: {
         id: true,
         username: true,
-        role: true,
+        role: {
+          select: {
+            id: true,
+            name: true,
+            permissionGroup: {
+              select: {
+                permissions: {
+                  select: {
+                    permission: {
+                      select: {
+                        name: true,
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
         employee: true,
-        permissions: { include: { permission: true } },
       },
     });
 
@@ -47,12 +64,12 @@ router.get('/users/:id', async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    const userPermissions = user.permissions.map(up => up.permission.name);
+    const userPermissions = user.role.permissionGroup.permissions.map(pg => pg.permission.name);
 
     res.json({
       id: user.id,
       username: user.username,
-      role: user.role,
+      role: user.role.name,
       permissions: userPermissions,
       firstName: user.employee.firstName,
       lastName: user.employee.lastName,
