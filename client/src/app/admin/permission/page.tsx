@@ -47,10 +47,11 @@ export default function PermissionManagementPage() {
 
     useEffect(() => {
         const fetchRolesAndPermissions = async () => {
-            if (!session) return;
-
-            try {
-                const userResponse = await axios.get(`https://localhost:8080/api/users/${session.user.id}`, {
+            if (!session || !session.user || !session.accessToken) return;
+            const userId = (session.user as any).id;
+    
+                try {
+                    const userResponse = await axios.get(`https://localhost:8080/api/users/${userId}`, {
                     headers: {
                         Authorization: `Bearer ${session.accessToken}`,
                     },
@@ -101,7 +102,7 @@ export default function PermissionManagementPage() {
     };
 
     const handlePermissionToggle = async (permissionId: string) => {
-        if (!selectedRole || !selectedRole.permissionGroup) return;
+        if (!session || !selectedRole || !selectedRole.permissionGroup) return;
         
         const hasPermission = selectedRole.permissionGroup.permissions.some(p => p.permissionId === permissionId);
         const updatedPermissions = hasPermission
@@ -122,20 +123,26 @@ export default function PermissionManagementPage() {
                 role.id === selectedRole.id
                     ? {
                           ...role,
-                          permissionGroup: {
-                              ...role.permissionGroup,
-                              permissions: updatedPermissions
-                          }
+                          permissionGroup: role.permissionGroup
+                              ? {
+                                    id: role.permissionGroup.id,
+                                    name: role.permissionGroup.name || '',
+                                    permissions: updatedPermissions
+                                }
+                              : null
                       }
                     : role
             ));
             setSelectedRole(prev => prev
                 ? { 
                       ...prev, 
-                      permissionGroup: { 
-                          ...prev.permissionGroup, 
-                          permissions: updatedPermissions 
-                      } 
+                      permissionGroup: prev.permissionGroup
+                          ? {
+                                id: prev.permissionGroup.id,
+                                name: prev.permissionGroup.name || '',
+                                permissions: updatedPermissions
+                            }
+                          : null
                   }
                 : null
             );
@@ -195,7 +202,7 @@ export default function PermissionManagementPage() {
                                     <div key={permission.id} className="flex items-center">
                                         <input
                                             type="checkbox"
-                                            checked={selectedRole.permissionGroup.permissions.some(p => p.permissionId === permission.id)}
+                                            checked={selectedRole?.permissionGroup?.permissions.some(p => p.permissionId === permission.id) ?? false}
                                             onChange={() => handlePermissionToggle(permission.id)}
                                             className="h-4 w-4 text-indigo-600 border-gray-300 rounded"
                                         />

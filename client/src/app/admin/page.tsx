@@ -102,15 +102,21 @@ export default function AdminLandingPage() {
 
     return (
         <div className="min-h-screen bg-gray-50">
-            <div className="mx-full p-2">
-                <div className="mb-2">
-                    <button onClick={handleBack} className="text-blue-600 hover:underline">
-                        &larr; Dashboard
-                    </button>
-                </div>
-
-                <header className="mb-2">
-                    <h1 className="text-3xl font-bold text-gray-800">Admin Dashboard</h1>
+            <div className="mx-full p-4">
+                <header className="mb-4">
+                    <div className="flex justify-between items-center mb-4">
+                        <h1 className="text-3xl font-bold text-gray-800">Admin Dashboard</h1>
+                        <div className="flex justify-end items-center space-x-1 text-sm">
+                            <span
+                                className="cursor-pointer text-blue-600 hover:underline"
+                                onClick={() => router.push('/dashboard')}
+                            >
+                                Dashboard
+                            </span>
+                            <span>{'>'}</span>
+                            <span className="font-bold">Admin</span>
+                        </div>
+                    </div>
                 </header>
 
                 <div className="flex flex-col md:flex-row gap-8">

@@ -57,7 +57,7 @@ const SidebarLink = ({ href, icon: Icon, label, isCollapsed }: SidebarLinkProps)
 const Sidebar = () => {
   const dispatch = useAppDispatch();
   const isSidebarCollapsed = useAppSelector(
-    (state: { global: { isSidebarCollapsed: boolean } }) => state.global.isSidebarCollapsed
+    state => state.global.isSidebarCollapsed
   );
 
   const toggleSidebar = () => {

@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import React, { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import axiosInstance from '@/src/state/axios';
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
+import { Search, ChevronDown } from 'lucide-react';
 
 // Helper to format phone numbers e.g. (123) 456-7890
 const formatPhoneNumber = (value: string) => {
@@ -81,6 +83,8 @@ export default function UserManagementPage() {
     const { data: session } = useSession();
     const [employees, setEmployees] = useState<Employee[]>([]);
     const [users, setUsers] = useState<User[]>([]);
+    const [visibleUserCount, setVisibleUserCount] = useState(25);
+    const [currentPage, setCurrentPage] = useState(1);
     const [editingEmployeeId, setEditingEmployeeId] = useState<string | null>(null);
     const [editingPassword, setEditingPassword] = useState("");
     const [newEmployee, setNewEmployee] = useState({
@@ -98,15 +102,12 @@ export default function UserManagementPage() {
         salary: 0
     });
     const [showAddEmployeeForm, setShowAddEmployeeForm] = useState(false);
-    const [showActiveEmployees, setShowActiveEmployees] = useState(true);
 
-    const handleShowAddEmployeeForm = () => {
-        setShowAddEmployeeForm(!showAddEmployeeForm);
-    };
-
-    const toggleEmployeeFilter = () => {
-        setShowActiveEmployees(!showActiveEmployees);
-    };
+    // New filter states
+    const [searchQuery, setSearchQuery] = useState('');
+    const [statusFilter, setStatusFilter] = useState('all'); // options: all, active, onleave, terminated, suspended
+    const [groupFilter, setGroupFilter] = useState('all'); // filter by position
+    const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
 
     useEffect(() => {
         if (!session || !(session as any).accessToken) return;
@@ -144,6 +145,10 @@ export default function UserManagementPage() {
         fetchEmployees();
         fetchUsers();
     }, [session]);
+
+    const handleShowAddEmployeeForm = () => {
+        setShowAddEmployeeForm(!showAddEmployeeForm);
+    };
 
     const handleAddEmployee = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -229,7 +234,7 @@ export default function UserManagementPage() {
             );
 
             if (editingPassword.trim() !== "") {
-                const { isValid, errors } = validateCredentials(employee.email, editingPassword); // or some username reference
+                const { isValid, errors } = validateCredentials(employee.email, editingPassword);
                 if (!isValid) {
                     alert(errors.join('\n'));
                     return;
@@ -267,11 +272,6 @@ export default function UserManagementPage() {
         }
     };
 
-    const handleEditClick = (id: string) => {
-        setEditingPassword("");
-        setEditingEmployeeId(editingEmployeeId === id.toString() ? null : id.toString());
-    };
-
     const handleDeleteClick = (id: string) => {
         handleDeleteEmployee(id);
     };
@@ -286,34 +286,110 @@ export default function UserManagementPage() {
         return isNaN(date.getTime()) ? "" : date.toISOString().split('T')[0];
     };
 
+    // Compute filtered employees based on search, status and group (position) filter and sort alphabetically.
+    const filteredEmployees = employees
+        .filter(emp => {
+            const fullName = (emp.firstName + " " + emp.lastName).toLowerCase();
+            const searchLower = searchQuery.toLowerCase();
+            const matchesSearch =
+                fullName.includes(searchLower) || emp.email.toLowerCase().includes(searchLower);
+            const matchesStatus = statusFilter === 'all'
+                ? true
+                : emp.status.toLowerCase() === statusFilter;
+            const matchesGroup = groupFilter === 'all'
+                ? true
+                : emp.position === groupFilter;
+            return matchesSearch && matchesStatus && matchesGroup;
+        })
+        .sort((a, b) => {
+            const nameA = (a.firstName + " " + a.lastName).toLowerCase();
+            const nameB = (b.firstName + " " + b.lastName).toLowerCase();
+            return sortOrder === 'asc'
+                ? nameA.localeCompare(nameB)
+                : nameB.localeCompare(nameA);
+        });
+
     return (
-        <div className="flex flex-col items-left min-h-screen bg-gray-50 py-4">
-            <div className="flex justify-between items-center mb-6">
-                <h1 className="text-2xl font-bold">User Management</h1>
-                <button
-                    onClick={handleBackClick}
-                    className="bg-blue-500 text-white rounded px-4 py-2 hover:bg-blue-600"
-                >
-                    Back to Admin
-                </button>
+        <div className="min-h-screen bg-gray-50 py-2">
+            <div className="flex mx-full justify-between items-center mb-4 ">
+                <h1 className="text-2xl font-bold">Users</h1>
+                <div className="flex items-center space-x-1 text-sm">
+                    <span
+                        className="cursor-pointer text-blue-600 hover:underline"
+                        onClick={() => router.push('/dashboard')}
+                    >
+                        Dashboard
+                    </span>
+                    <span>{'>'}</span>
+                    <span
+                        className="cursor-pointer text-blue-600 hover:underline"
+                        onClick={() => router.push('/admin')}
+                    >
+                        Admin
+                    </span>
+                    <span>{'>'}</span>
+                    <span className="font-bold">Users</span>
+                </div>
             </div>
-            <div className="flex space-x-2 mb-4">
-                <button
-                    onClick={handleShowAddEmployeeForm}
-                    className="bg-green-500 text-white rounded px-4 py-2 hover:bg-green-600 w-52"
-                >
-                    {showAddEmployeeForm ? 'Cancel' : 'Add New Employee'}
-                </button>
-                <button
-                    onClick={toggleEmployeeFilter}
-                    className="bg-gray-500 text-white rounded px-4 py-2 hover:bg-gray-600 w-52"
-                >
-                    {showActiveEmployees ? 'Show Previous Employees' : 'Show Active Employees'}
-                </button>
+            <hr className="w-full border-t-2 border-gray-500 mb-4" />
+            <div className="flex flex-col gap-4 mb-4">
+                <div className="flex items-center gap-4">
+                    <div className="relative">
+                        <input
+                            type="text"
+                            placeholder="Search by name or email"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="w-full border pl-10 border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring focus:ring-indigo-300"
+                        />
+                        <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                            <Search className="text-gray-500" size={20} />
+                        </div>
+                    </div>
+                    <select
+                        value={statusFilter}
+                        onChange={(e) => setStatusFilter(e.target.value)}
+                        className="border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring focus:ring-indigo-300"
+                    >
+                        <option value="active">Active</option>
+                        <option value="all">All Statuses</option>
+                        <option value="onleave">On Leave</option>
+                        <option value="terminated">Terminated</option>
+                        <option value="suspended">Suspended</option>
+                    </select>
+                    <select
+                        value={groupFilter}
+                        onChange={(e) => setGroupFilter(e.target.value)}
+                        className="border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring focus:ring-indigo-300"
+                    >
+                        <option value="all">All Groups</option>
+                        {["ProjectManager", "FieldManager", "FieldTechnicianL1", "FieldTechnicianL2", "FieldTechnicianL3", "OfficeStaff", "Owner"].map(pos => (
+                            <option key={pos} value={pos}>
+                                {formatPosition(pos)}
+                            </option>
+                        ))}
+                    </select>
+                    <select
+                        value={sortOrder}
+                        onChange={(e) => setSortOrder(e.target.value as 'asc' | 'desc')}
+                        className="border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring focus:ring-indigo-300"
+                    >
+                        <option value="asc">A - Z</option>
+                        <option value="desc">Z - A</option>
+                    </select>
+                </div>
+                <div>
+                    <button
+                        onClick={handleShowAddEmployeeForm}
+                        className="bg-[#414A9E] text-white rounded px-4 py-2 hover:bg-[#29ABE2]"
+                    >
+                        {showAddEmployeeForm ? 'Cancel' : 'Add New User'}
+                    </button>
+                </div>
             </div>
             {showAddEmployeeForm && (
                 <div className="mx-full">
-                    <h2 className="text-xl font-semibold mb-2 py-4">Add New Employee</h2>
+                    <h2 className="text-xl font-semibold mb-2 py-4">Add New User</h2>
                     <form
                         onSubmit={handleAddEmployee}
                         className="bg-white p-8 rounded shadow w-full space-y-4"
@@ -429,22 +505,15 @@ export default function UserManagementPage() {
                                 onChange={(e) => {
                                     const newPassword = e.target.value;
                                     setNewEmployee({ ...newEmployee, password: newPassword });
-                                    const strength = calculatePasswordStrength(newPassword);
                                     const { isValid, errors } = validateCredentials(newEmployee.username, newPassword);
                                     if (!isValid) console.log(errors.join('\n'));
                                 }}
                                 className="border border-gray-300 rounded w-full px-3 py-2 focus:outline-none focus:ring focus:ring-indigo-300"
                             />
-                            <div className="relative h-2 w-full bg-gray-200 rounded">
-                                <div
-                                    className="absolute top-0 left-0 h-full bg-green-500 transition-all duration-300"
-                                    style={{ width: `${(calculatePasswordStrength(newEmployee.password) / 4) * 100}%` }}
-                                />
-                            </div>
-                            <p className="text-sm text-gray-500">
-                                Password must be at least 8 chars, with at least one uppercase, one digit, and one special character.
-                            </p>
                         </div>
+                        <p className="text-sm text-gray-500">
+                            Password must be at least 8 chars, with at least one uppercase, one digit, and one special character.
+                        </p>
                         <div className="space-y-2">
                             <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
                             <select
@@ -466,129 +535,190 @@ export default function UserManagementPage() {
                     </form>
                 </div>
             )}
+
             <div className="w-full">
-                <h2 className="text-xl font-semibold mb-4">{showActiveEmployees ? 'Active Employees' : 'Non-Active Employees'}</h2>
-                <table className="min-w-full bg-white" id="employeeList">
-                    <thead>
-                        <tr>
-                            <th className="py-2 px-4 border-b text-left">Name</th>
-                            <th className="py-2 px-4 border-b text-left">Email</th>
-                            <th className="py-2 px-4 border-b text-left">Position</th>
-                            <th className="py-2 px-4 border-b text-left">User</th>
-                            <th className="py-2 px-4 border-b text-left">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {employees.filter(emp => showActiveEmployees ? emp.status === 'Active' : emp.status !== 'Active').map((employee) => (
-                            <React.Fragment key={employee.id}>
-                                <tr>
-                                    <td className="py-2 px-4 border-b">{employee.firstName} {employee.lastName}</td>
-                                    <td className="py-2 px-4 border-b">{employee.email}</td>
-                                    <td className="py-2 px-4 border-b">{formatPosition(employee.position)}</td>
-                                    <td className="py-2 px-4 border-b">{users.find(user => user.id === employee.userId.toString())?.username}</td>
-                                    <td className="py-2 px-4 border-b">
-                                        <button
-                                            data-id={employee.id}
-                                            className="edit-btn bg-yellow-500 text-white rounded px-4 py-2 hover:bg-yellow-600 mr-2"
-                                            onClick={() => handleEditClick(employee.id)}
+                <div className="min-w-full bg-gray-50 text-[#29ABE3]" id="employeeList">
+                    <div className="group flex justify-between border-b">
+                        <div className="px-2 py-2 font-semibold flex-1 text-left">Name</div>
+                        <div className="px-2 py-2 font-semibold flex-1 text-left">Group</div>
+                        <div className="px-2 py-2 font-semibold flex-1 text-left">Email</div>
+                        <div className="px-2 py-2 font-semibold flex-1 text-left">User</div>
+                        <div className="px-2 py-2 font-semibold w-8"></div>
+                    </div>
+                </div>
+                <Accordion type="single" collapsible className="w-full">
+                    {filteredEmployees.map((employee, index) => (
+                        <AccordionItem key={employee.id} value={employee.id}>
+                            <AccordionTrigger
+                                className={`group flex justify-between items-center py-4 px-4 border-b ${
+                                    index % 2 === 0 ? "bg-white" : "bg-gray-100"
+                                } hover:bg-gray-100`}
+                            >
+                                <div className="flex flex-col sm:flex-row sm:space-x-4 w-full">
+                                    <span className="truncate w-1/4">
+                                        {employee.firstName} {employee.lastName}
+                                    </span>
+                                    <span className="truncate w-1/4 ml-2">
+                                        {formatPosition(employee.position)}
+                                    </span>
+                                    <span className="truncate w-1/4">{employee.email}</span>
+                                    <span className="truncate w-1/4 ml-2">
+                                        {users.find((user) => user.id === employee.userId.toString())?.username}
+                                    </span>
+                                </div>
+                            </AccordionTrigger>
+                            <AccordionContent>
+                                <div className="border-b">
+                                    <div className="p-6 bg-gray-100">
+                                        <form
+                                            onSubmit={(e) => handleEditEmployee(e, employee)}
+                                            className="space-y-4"
                                         >
-                                            Edit
-                                        </button>
-                                        <button
-                                            data-id={employee.id}
-                                            className="delete-btn bg-red-500 text-white rounded px-4 py-2 hover:bg-red-600"
-                                            onClick={() => handleDeleteClick(employee.id)}
-                                        >
-                                            Delete
-                                        </button>
-                                    </td>
-                                </tr>
-                                {editingEmployeeId === employee.id && (
-                                    <tr>
-                                        <td colSpan={5} className="py-2 px-2 border-b">
-                                            <form
-                                                onSubmit={(e) => handleEditEmployee(e, employee)}
-                                                className="bg-white p-8 rounded shadow w-full space-y-4"
-                                            >
-                                                <div className="space-y-2">
-                                                    <label className="block text-sm font-medium text-gray-700 mb-1">First Name</label>
+                                            <div className="flex flex-wrap gap-4">
+                                                <div className="flex-1">
+                                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                        First Name
+                                                    </label>
                                                     <input
                                                         type="text"
-                                                        placeholder="First Name"
                                                         value={employee.firstName}
-                                                        onChange={(e) => setEmployees(employees.map(emp => emp.id === employee.id ? { ...emp, firstName: e.target.value } : emp))}
-                                                        className="border border-gray-300 rounded w-full px-3 py-2 focus:outline-none focus:ring focus:ring-indigo-300"
-                                                    />
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
-                                                    <input
-                                                        type="text"
-                                                        placeholder="Last Name"
-                                                        value={employee.lastName}
-                                                        onChange={(e) => setEmployees(employees.map(emp => emp.id === employee.id ? { ...emp, lastName: e.target.value } : emp))}
-                                                        className="border border-gray-300 rounded w-full px-3 py-2 focus:outline-none focus:ring focus:ring-indigo-300"
-                                                    />
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                                                    <input
-                                                        type="email"
-                                                        placeholder="Email"
-                                                        value={employee.email}
-                                                        onChange={(e) => setEmployees(employees.map(emp => emp.id === employee.id ? { ...emp, email: e.target.value } : emp))}
-                                                        className="border border-gray-300 rounded w-full px-3 py-2 focus:outline-none focus:ring focus:ring-indigo-300"
-                                                    />
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Position</label>
-                                                    <select
-                                                        value={employee.position}
                                                         onChange={(e) =>
                                                             setEmployees(
-                                                                employees.map(emp =>
-                                                                    emp.id === employee.id ? { ...emp, position: e.target.value } : emp
+                                                                employees.map((emp) =>
+                                                                    emp.id === employee.id
+                                                                        ? { ...emp, firstName: e.target.value }
+                                                                        : emp
                                                                 )
                                                             )
                                                         }
                                                         className="border border-gray-300 rounded w-full px-3 py-2 focus:outline-none focus:ring focus:ring-indigo-300"
-                                                    >
-                                                        {["ProjectManager", "FieldManager", "FieldTechnicianL1", "FieldTechnicianL2", "FieldTechnicianL3", "OfficeStaff", "Owner"].map(pos => (
-                                                            <option key={pos} value={pos}>
-                                                                {formatPosition(pos)}
-                                                            </option>
-                                                        ))}
-                                                    </select>
+                                                    />
                                                 </div>
-                                                <div className="space-y-2">
-                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+                                                <div className="flex-1">
+                                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                        Last Name
+                                                    </label>
                                                     <input
-                                                        type="tel"
-                                                        placeholder="Phone Number"
-                                                        value={employee.phoneNumber}
-                                                        onChange={(e) => 
-                                                            setEmployees(employees.map(emp => 
-                                                                emp.id === employee.id ? { ...emp, phoneNumber: formatPhoneNumber(e.target.value) } : emp
-                                                            ))
+                                                        type="text"
+                                                        value={employee.lastName}
+                                                        onChange={(e) =>
+                                                            setEmployees(
+                                                                employees.map((emp) =>
+                                                                    emp.id === employee.id
+                                                                        ? { ...emp, lastName: e.target.value }
+                                                                        : emp
+                                                                )
+                                                            )
                                                         }
                                                         className="border border-gray-300 rounded w-full px-3 py-2 focus:outline-none focus:ring focus:ring-indigo-300"
                                                     />
                                                 </div>
-                                                <div className="space-y-2">
-                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                    Email
+                                                </label>
+                                                <input
+                                                    type="email"
+                                                    value={employee.email}
+                                                    onChange={(e) =>
+                                                        setEmployees(
+                                                            employees.map((emp) =>
+                                                                emp.id === employee.id
+                                                                    ? { ...emp, email: e.target.value }
+                                                                    : emp
+                                                            )
+                                                        )
+                                                    }
+                                                    className="border border-gray-300 rounded w-full px-3 py-2 focus:outline-none focus:ring focus:ring-indigo-300"
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                    Position
+                                                </label>
+                                                <select
+                                                    value={employee.position}
+                                                    onChange={(e) =>
+                                                        setEmployees(
+                                                            employees.map((emp) =>
+                                                                emp.id === employee.id
+                                                                    ? { ...emp, position: e.target.value }
+                                                                    : emp
+                                                            )
+                                                        )
+                                                    }
+                                                    className="border border-gray-300 rounded w-full px-3 py-2 focus:outline-none focus:ring focus:ring-indigo-300"
+                                                >
+                                                    {[
+                                                        "ProjectManager",
+                                                        "FieldManager",
+                                                        "FieldTechnicianL1",
+                                                        "FieldTechnicianL2",
+                                                        "FieldTechnicianL3",
+                                                        "OfficeStaff",
+                                                        "Owner",
+                                                    ].map((pos) => (
+                                                        <option key={pos} value={pos}>
+                                                            {formatPosition(pos)}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                    Phone Number
+                                                </label>
+                                                <input
+                                                    type="tel"
+                                                    value={employee.phoneNumber}
+                                                    onChange={(e) =>
+                                                        setEmployees(
+                                                            employees.map((emp) =>
+                                                                emp.id === employee.id
+                                                                    ? { ...emp, phoneNumber: formatPhoneNumber(e.target.value) }
+                                                                    : emp
+                                                            )
+                                                        )
+                                                    }
+                                                    className="border border-gray-300 rounded w-full px-3 py-2 focus:outline-none focus:ring focus:ring-indigo-300"
+                                                />
+                                            </div>
+                                            <div className="flex flex-wrap gap-4">
+                                                <div className="flex-1">
+                                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                        Start Date
+                                                    </label>
                                                     <input
                                                         type="date"
-                                                        placeholder="Start Date"
                                                         value={formatDateForInput(employee.startDate)}
-                                                        onChange={(e) => setEmployees(employees.map(emp => emp.id === employee.id ? { ...emp, startDate: e.target.value } : emp))}
+                                                        onChange={(e) =>
+                                                            setEmployees(
+                                                                employees.map((emp) =>
+                                                                    emp.id === employee.id
+                                                                        ? { ...emp, startDate: e.target.value }
+                                                                        : emp
+                                                                )
+                                                            )
+                                                        }
                                                         className="border border-gray-300 rounded w-full px-3 py-2 focus:outline-none focus:ring focus:ring-indigo-300"
                                                     />
                                                 </div>
-                                                <div className="space-y-2">
-                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                                                <div className="flex-1">
+                                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                        Status
+                                                    </label>
                                                     <select
                                                         value={employee.status}
-                                                        onChange={(e) => setEmployees(employees.map(emp => emp.id === employee.id ? { ...emp, status: e.target.value } : emp))}
+                                                        onChange={(e) =>
+                                                            setEmployees(
+                                                                employees.map((emp) =>
+                                                                    emp.id === employee.id
+                                                                        ? { ...emp, status: e.target.value }
+                                                                        : emp
+                                                                )
+                                                            )
+                                                        }
                                                         className="border border-gray-300 rounded w-full px-3 py-2 focus:outline-none focus:ring focus:ring-indigo-300"
                                                     >
                                                         <option value="Active">Active</option>
@@ -597,44 +727,90 @@ export default function UserManagementPage() {
                                                         <option value="Suspended">Suspended</option>
                                                     </select>
                                                 </div>
-                                                <div className="space-y-2">
-                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Salary</label>
-                                                    <div className="relative">
-                                                        <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">$</span>
-                                                        <input
-                                                            type="number"
-                                                            placeholder="Salary"
-                                                            value={employee.salary}
-                                                            onChange={(e) => setEmployees(employees.map(emp => emp.id === employee.id ? { ...emp, salary: parseFloat(e.target.value) } : emp))}
-                                                            className="border border-gray-300 rounded w-full px-3 py-2 pl-8 focus:outline-none focus:ring focus:ring-indigo-300"
-                                                        />
-                                                    </div>
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <label className="block text-sm font-medium text-gray-700 mb-1">New Password</label>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                    Salary
+                                                </label>
+                                                <div className="relative">
+                                                    <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">
+                                                        $
+                                                    </span>
                                                     <input
-                                                        type="password"
-                                                        placeholder="New Password"
-                                                        value={editingPassword}
-                                                        onChange={(e) => setEditingPassword(e.target.value)}
-                                                        className="border border-gray-300 rounded w-full px-3 py-2 focus:outline-none focus:ring focus:ring-indigo-300"
+                                                        type="number"
+                                                        value={employee.salary}
+                                                        onChange={(e) =>
+                                                            setEmployees(
+                                                                employees.map((emp) =>
+                                                                    emp.id === employee.id
+                                                                        ? { ...emp, salary: parseFloat(e.target.value) }
+                                                                        : emp
+                                                                )
+                                                            )
+                                                        }
+                                                        className="border border-gray-300 rounded w-full px-3 py-2 pl-8 focus:outline-none focus:ring focus:ring-indigo-300"
                                                     />
                                                 </div>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                    New Password
+                                                </label>
+                                                <input
+                                                    type="password"
+                                                    value={editingPassword}
+                                                    onChange={(e) => setEditingPassword(e.target.value)}
+                                                    className="border border-gray-300 rounded w-full px-3 py-2 focus:outline-none focus:ring focus:ring-indigo-300"
+                                                />
+                                            </div>
+                                            <div className="flex space-x-2">
                                                 <button
                                                     type="submit"
-                                                    className="bg-indigo-600 text-white rounded px-4 py-2 hover:bg-indigo-700"
+                                                    className="bg-[#29ABE3] text-white rounded px-4 py-2 hover:bg-[#1C8FA6]"
                                                 >
                                                     Update Employee
                                                 </button>
-                                            </form>
-                                        </td>
-                                    </tr>
-                                )}
-                            </React.Fragment>
-                        ))}
-                    </tbody>
-                </table>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleDeleteClick(employee.id)}
+                                                    className="bg-[#FF9F1C] text-white rounded px-4 py-2 hover:bg-[#FFA726]"
+                                                >
+                                                    Make Inactive
+                                                </button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </AccordionContent>
+                        </AccordionItem>
+                    ))}
+                </Accordion>
             </div>
+            {filteredEmployees.length > visibleUserCount && (
+                <div className="w-full mt-8 flex justify-center items-center space-x-4">
+                    <button
+                        onClick={() =>
+                            setCurrentPage((prev: number) => Math.max(prev - 1, 1))
+                        }
+                        disabled={currentPage === 1}
+                        className="px-4 py-2 bg-indigo-600 text-white rounded disabled:opacity-50"
+                    >
+                        Previous
+                    </button>
+                    <span>
+                        Page {currentPage} of {Math.ceil(filteredEmployees.length / visibleUserCount)}
+                    </span>
+                    <button
+                        onClick={() =>
+                            setCurrentPage((prev: number) => prev + 1)
+                        }
+                        disabled={currentPage === Math.ceil(filteredEmployees.length / visibleUserCount)}
+                        className="px-4 py-2 bg-indigo-600 text-white rounded disabled:opacity-50"
+                    >
+                        Next
+                    </button>
+                </div>
+            )}
         </div>
     );
 }
