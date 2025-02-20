@@ -27,7 +27,7 @@ export const configurePassport = () => {
 
     passport.deserializeUser(async (id, done) => {
         try {
-            const user = await prisma.user.findUnique({ where: { id: Number(id) } });
+            const user = await prisma.user.findUnique({ where: { id: id as string } });
             done(null, user);
         } catch (err) {
             done(err);

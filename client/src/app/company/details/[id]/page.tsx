@@ -3,9 +3,9 @@
 import React, { useState, useEffect, FormEvent } from 'react';
 import Link from 'next/link';
 import axios from 'axios';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
-import { Plus } from 'lucide-react';
+import { Edit2, MapPin, Plus } from 'lucide-react';
 
 interface Location {
     id?: number;
@@ -79,11 +79,12 @@ const getStatusColorClass = (status: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED') => {
 const CompanyDetailsPage: React.FC = () => {
     const { data: session } = useSession();
     const params = useParams();
+    const router = useRouter();
     const companyId = params.id as string;
     const [company, setCompany] = useState<Company | null>(null);
     const [selectedDivision, setSelectedDivision] = useState<Division | null>(null);
 
-    // Editing states
+    // Editing states for company
     const [isEditing, setIsEditing] = useState(false);
     const [editName, setEditName] = useState('');
     const [editType, setEditType] = useState<CompanyType>('Customer');
@@ -104,6 +105,17 @@ const CompanyDetailsPage: React.FC = () => {
     const [locations, setLocations] = useState<Location[]>([]);
     const [contracts, setContracts] = useState<Contract[]>([]);
     const [contacts, setContacts] = useState<Contact[]>([]);
+
+    // New states for editing/adding a division location
+    const [isEditingLocation, setIsEditingLocation] = useState(false);
+    const [editingLocation, setEditingLocation] = useState<Location>({
+        street1: '',
+        street2: '',
+        city: '',
+        state: '',
+        zipCode: '',
+    });
+    const [isNewLocation, setIsNewLocation] = useState(false); // distinguishes edit vs add
 
     useEffect(() => {
         const fetchCompanyDetails = async () => {
@@ -146,18 +158,15 @@ const CompanyDetailsPage: React.FC = () => {
                 },
             };
             try {
-                // If company has divisions and a division is selected, fetch division-specific data
                 if (company.hasDivisions && selectedDivision && selectedDivision.id) {
-                    const [locationsRes] = await Promise.all([
-                        axios.get(`https://localhost:8080/api/divisions/${selectedDivision.id}/locations`, config),
-                        //axios.get(`https://localhost:8080/api/divisions/${selectedDivision.id}/contracts`, config),
-                        //axios.get(`https://localhost:8080/api/divisions/${selectedDivision.id}/contacts`, config),
-                    ]);
-                    setLocations(locationsRes.data);
-                    //setContracts(contractsRes.data);
-                    //setContacts(contactsRes.data);
+                    if (selectedDivision.location) {
+                        setLocations([selectedDivision.location]);
+                    } else {
+                        const locationsRes = await axios.get(`https://localhost:8080/api/divisions/${selectedDivision.id}/locations`, config);
+                        const data = locationsRes.data;
+                        setLocations(Array.isArray(data) ? data : [data]);
+                    }
                 } else {
-                    // Fetch company-specific data for locations, contracts and contacts
                     const [locationsRes, contractsRes, contactsRes] = await Promise.all([
                         axios.get(`https://localhost:8080/api/companies/${company.id}/locations`, config),
                         axios.get(`https://localhost:8080/api/companies/${company.id}/contracts`, config),
@@ -213,6 +222,67 @@ const CompanyDetailsPage: React.FC = () => {
         }
     };
 
+    // New handler functions for editing/adding a division location
+    const handleEditLocationClick = (loc: Location) => {
+        setEditingLocation(loc);
+        setIsNewLocation(false);
+        setIsEditingLocation(true);
+    };
+
+    const handleAddLocationClick = () => {
+        setEditingLocation({
+            street1: '',
+            street2: '',
+            city: '',
+            state: '',
+            zipCode: '',
+        });
+        setIsNewLocation(true);
+        setIsEditingLocation(true);
+    };
+
+    const handleLocationSubmit = async (e: FormEvent) => {
+        e.preventDefault();
+        if (!session || !(session as any).accessToken || !selectedDivision || !selectedDivision.id) {
+            console.error('Missing session or division info');
+            return;
+        }
+        const config = {
+            headers: {
+                Authorization: `Bearer ${(session as any).accessToken}`,
+            },
+        };
+
+        try {
+            let response;
+            if (!isNewLocation && editingLocation.id) {
+                response = await axios.put(
+                    `https://localhost:8080/api/divisions/${selectedDivision.id}/locations/${editingLocation.id}`,
+                    editingLocation,
+                    config
+                );
+            } else {
+                response = await axios.post(
+                    `https://localhost:8080/api/divisions/${selectedDivision.id}/locations`,
+                    editingLocation,
+                    config
+                );
+            }
+            setLocations((prev) => {
+                if (!prev) return [response.data];
+                if (!isNewLocation) {
+                    return prev.map((loc) =>
+                        loc.id === editingLocation.id ? response.data : loc
+                    );
+                }
+                return [...prev, response.data];
+            });
+            setIsEditingLocation(false);
+        } catch (error) {
+            console.error('Location update failed', error);
+        }
+    };
+
     const renderContent = () => {
         if (selectedDivision) {
             return (
@@ -220,29 +290,140 @@ const CompanyDetailsPage: React.FC = () => {
                     <h3 className="text-xl font-semibold mb-2">
                         {selectedDivision.name}
                     </h3>
+                    {isEditingLocation ? (
+                        <form onSubmit={handleLocationSubmit} className="bg-gray-100 p-4 rounded shadow space-y-4 mb-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700">Street 1</label>
+                                <input
+                                    type="text"
+                                    value={editingLocation.street1}
+                                    onChange={(e) =>
+                                        setEditingLocation({ ...editingLocation, street1: e.target.value })
+                                    }
+                                    className="border border-gray-300 rounded w-full px-3 py-2 focus:outline-none focus:ring focus:ring-indigo-300"
+                                    required
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700">Street 2</label>
+                                <input
+                                    type="text"
+                                    value={editingLocation.street2}
+                                    onChange={(e) =>
+                                        setEditingLocation({ ...editingLocation, street2: e.target.value })
+                                    }
+                                    className="border border-gray-300 rounded w-full px-3 py-2 focus:outline-none focus:ring focus:ring-indigo-300"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700">City</label>
+                                <input
+                                    type="text"
+                                    value={editingLocation.city}
+                                    onChange={(e) =>
+                                        setEditingLocation({ ...editingLocation, city: e.target.value })
+                                    }
+                                    className="border border-gray-300 rounded w-full px-3 py-2 focus:outline-none focus:ring focus:ring-indigo-300"
+                                    required
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700">State</label>
+                                <input
+                                    type="text"
+                                    value={editingLocation.state}
+                                    onChange={(e) =>
+                                        setEditingLocation({ ...editingLocation, state: e.target.value })
+                                    }
+                                    className="border border-gray-300 rounded w-full px-3 py-2 focus:outline-none focus:ring focus:ring-indigo-300"
+                                    required
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700">Zip Code</label>
+                                <input
+                                    type="text"
+                                    value={editingLocation.zipCode}
+                                    onChange={(e) =>
+                                        setEditingLocation({ ...editingLocation, zipCode: e.target.value })
+                                    }
+                                    className="border border-gray-300 rounded w-full px-3 py-2 focus:outline-none focus:ring focus:ring-indigo-300"
+                                    required
+                                />
+                            </div>
+                            <div className="flex space-x-4">
+                                <button type="submit" className="bg-blue-600 text-white rounded px-4 py-2 hover:bg-blue-700">
+                                    {isNewLocation ? 'Add Location' : 'Update Location'}
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setIsEditingLocation(false)}
+                                    className="bg-gray-600 text-white rounded px-4 py-2 hover:bg-gray-700"
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                        </form>
+                    ) : null}
+
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
                             <h4 className="font-semibold">Locations</h4>
-                            {selectedDivision?.location ? (
-                                <p>
-                                    {selectedDivision.location.street1}, {selectedDivision.location.city}
-                                </p>
+                            {locations && locations.length > 0 ? (
+                                <div className="space-y-2">
+                                    {locations.map((loc, index) => {
+                                        const streetParts = [];
+                                        if (loc.street1 && loc.street1.trim() !== '') {
+                                            streetParts.push(loc.street1);
+                                        }
+                                        if (loc.street2 && loc.street2.trim() !== '') {
+                                            streetParts.push(loc.street2);
+                                        }
+                                        const locString = `${streetParts.join(', ')}, ${loc.city}, ${loc.state} ${loc.zipCode}`;
+                                        const openMap = () => {
+                                            const encodedAddress = encodeURIComponent(locString);
+                                            if (/iPhone|iPad|iPod/.test(navigator.userAgent)) {
+                                                window.open(`https://maps.apple.com/?q=${encodedAddress}`, "_blank");
+                                            } else {
+                                                window.open(`https://www.google.com/maps/search/?api=1&query=${encodedAddress}`, "_blank");
+                                            }
+                                        };
+
+                                        return (
+                                            <div key={loc.id ?? index} className="flex items-center space-x-2">
+                                                <div
+                                                    className="flex-1 text-gray-800 border-b border-gray-200 pb-1 cursor-pointer select-text"
+                                                    onClick={() => {
+                                                        navigator.clipboard.writeText(locString);
+                                                        alert('Location copied to clipboard');
+                                                    }}
+                                                >
+                                                    {locString}
+                                                </div>
+                                                <button onClick={openMap} className="flex items-center space-x-1 text-blue-500 hover:underline">
+                                                    <MapPin className="h-5 w-5" />
+                                                </button>
+                                                <button onClick={() => handleEditLocationClick(loc)} className="flex items-center space-x-1 text-green-500 hover:underline">
+                                                    <Edit2 className="h-5 w-5" />
+                                                </button>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
                             ) : (
-                                <>
-                                    {locations.length > 0 ? (
-                                        <ul>
-                                            {locations.map((loc) => (
-                                                <li key={loc.id}>
-                                                    {loc.street1}, {loc.city}
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    ) : (
-                                        <p>No location info available</p>
-                                    )}
-                                </>
+                                <p className="text-gray-600 italic">No location info available</p>
                             )}
+                            <div className="mt-2">
+                                <button
+                                    onClick={handleAddLocationClick}
+                                    className="flex items-center space-x-1 text-blue-500 hover:underline"
+                                >
+                                    <Plus className="h-5 w-5" />
+                                    <span>Add Location</span>
+                                </button>
+                            </div>
                         </div>
+                      
                         <div>
                             <h4 className="font-semibold">Contracts</h4>
                             {contracts.length > 0 ? (
@@ -275,6 +456,7 @@ const CompanyDetailsPage: React.FC = () => {
             return (
                 <div>
                     <h3 className="text-xl font-semibold mb-2">Company Details</h3>
+                    {/* Company-specific details can be rendered here */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
                             <h4 className="font-semibold">Locations</h4>
@@ -322,27 +504,24 @@ const CompanyDetailsPage: React.FC = () => {
     };
 
     return (
-        <div className="p-6">
-            <Link href="/company">
-                <button className="bg-gray-600 text-white rounded px-4 py-2 hover:bg-gray-700 mb-4">
-                    Back to Company
-                </button>
-            </Link>
+        <div className="p-4">
             {company ? (
-                <div className="mb-8">
+                <div className="mb-4">
                     {isEditing ? (
                         <form onSubmit={handleEditSubmit} className="bg-gray-100 p-4 rounded shadow space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700">
-                                    Company Name
-                                </label>
-                                <input
-                                    type="text"
-                                    value={editName}
-                                    onChange={(e) => setEditName(e.target.value)}
-                                    className="border border-gray-300 rounded w-full px-3 py-2 focus:outline-none focus:ring focus:ring-indigo-300"
-                                    required
-                                />
+                            <div className="flex flex-col md:flex-row md:items-center md:justify-between">
+                                <div className="flex-1 mr-4">
+                                    <label className="block text-sm font-medium text-gray-700">
+                                        Company Name
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={editName}
+                                        onChange={(e) => setEditName(e.target.value)}
+                                        className="border border-gray-300 rounded w-full px-3 py-2 focus:outline-none focus:ring focus:ring-indigo-300"
+                                        required
+                                    />
+                                </div>
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700">
@@ -402,10 +581,27 @@ const CompanyDetailsPage: React.FC = () => {
                                     </span>
                                 </p>
                             </div>
-                            <div>
+                            <div className="flex flex-col items-end">
+                                <div className="flex items-center space-x-1 text-sm">
+                                    <span
+                                        className="cursor-pointer text-blue-600 hover:underline"
+                                        onClick={() => router.push('/dashboard')}
+                                    >
+                                        Dashboard
+                                    </span>
+                                    <span>{'>'}</span>
+                                    <span
+                                        className="cursor-pointer text-blue-600 hover:underline"
+                                        onClick={() => router.push('/company')}
+                                    >
+                                        Companies
+                                    </span>
+                                    <span>{'>'}</span>
+                                    <span className="font-bold">Company Mangement</span>
+                                </div>
                                 <button
                                     onClick={handleEditClick}
-                                    className="bg-indigo-600 text-white rounded px-4 py-2 hover:bg-indigo-700"
+                                    className="bg-indigo-600 text-white rounded px-4 py-2 hover:bg-indigo-700 mt-4"
                                 >
                                     Edit Company
                                 </button>
@@ -416,6 +612,7 @@ const CompanyDetailsPage: React.FC = () => {
             ) : (
                 <p>Loading company information...</p>
             )}
+            <hr className="w-full border-t-2 border-gray-500 mb-4" />
 
             <div className="flex">
                 {company && company.divisions && company.divisions.length > 0 && (

@@ -167,4 +167,45 @@ router.get('/companies/:companyId/divisions', async (req: Request, res: Response
     }
 });
 
+router.get('/divisions/:divisionId/locations', async (req: Request, res: Response, next: NextFunction) => {
+    const { divisionId } = req.params;
+    try {
+        const division = await prisma.division.findUnique({
+            where: { id: Number(divisionId) },
+            include: { location: true },
+        });
+        if (!division) {
+            res.status(404).json({ error: 'Division not found' });
+        } else {
+            // Return the location in an array to match the axios.get() call
+            res.json(division.location ? [division.location] : []);
+        }
+    } catch (error) {
+        console.error('Error fetching locations for division:', error);
+        res.status(500).json({ error: 'Failed to fetch locations', details: (error as Error).message });
+    }
+});
+// Update a location for a specific division
+router.put('/divisions/:divisionId/locations/:locationId', async (req: Request, res: Response, next: NextFunction) => {
+    const { divisionId, locationId } = req.params;
+    const { street1, street2, city, state, zipCode } = req.body;
+    try {
+        // Optionally, you could verify the location belongs to the division before updating
+        const updatedLocation = await prisma.location.update({
+            where: { id: Number(locationId) },
+            data: {
+                street1,
+                street2: street2 || '',
+                city,
+                state,
+                zipCode,
+            },
+        });
+        res.json(updatedLocation);
+    } catch (error) {
+        console.error('Error updating location:', error);
+        res.status(500).json({ error: 'Failed to update location', details: (error as Error).message });
+    }
+});
+
 export default router;

@@ -404,12 +404,19 @@ const CompaniesPage: React.FC = () => {
     return (
         <div className="min-h-screen w-full px-4 py-8">
             <div className="mb-4">
-                <button onClick={() => router.back()} className="text-blue-500 hover:underline">
-                    &larr; Dashboard
-                </button>
-            </div>
-            <div className="mb-4">
-                <h1 className="text-2xl font-bold">Companies</h1>
+                <div className="flex justify-between items-center">
+                    <h1 className="text-2xl font-bold">Companies</h1>
+                    <div className="flex items-center space-x-1 text-sm">
+                        <span
+                            className="cursor-pointer text-blue-600 hover:underline"
+                            onClick={() => router.push('/dashboard')}
+                        >
+                            Dashboard
+                        </span>
+                        <span>{'>'}</span>
+                        <span className="font-bold">Companies</span>
+                    </div>
+                </div>
                 <div className="mt-2 flex justify-between items-center">
                     <SortButtons onSortChange={handleSortChange} />
                     <button
@@ -419,6 +426,7 @@ const CompaniesPage: React.FC = () => {
                         {showAddCompanyForm ? 'Cancel' : 'Add New Company'}
                     </button>
                 </div>
+                
             </div>
             {showAddCompanyForm && (
                 <AddCompanyForm onAddCompany={handleAddCompany} />
