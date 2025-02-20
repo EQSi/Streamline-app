@@ -25,7 +25,7 @@ export default function PermissionLayout({ children }: { children: React.ReactNo
 
     return (
         <div className={`${isDarkMode ? "dark" : "light"} flex bg-gray-50 text-gray-900 w-full min-h-screen`}>
-            <main className="flex flex-col w-full h-full py-7 px-9 bg-gray-50">
+            <main className="flex flex-col w-full h-full py-2 px-2 bg-gray-50">
                 {children}
             </main>
         </div>

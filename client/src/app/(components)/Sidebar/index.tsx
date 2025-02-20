@@ -1,6 +1,6 @@
 "use client";
 
-import { useAppDispatch, useAppSelector } from '@/src/app/redux';
+import { useAppDispatch, useAppSelector, RootState } from '@/src/app/redux';
 import React from 'react';
 import {
   Calendar,
@@ -20,6 +20,7 @@ import {
 import Link from 'next/link';
 import { setIsSidebarCollapsed } from '@/src/state';
 import { usePathname } from 'next/navigation';
+import { useAbility } from '@/src/context/abilityContext';
 import Image from 'next/image';
 import Logo from '@/src/assets/logo.png';
 import Logo3 from '@/src/assets/logo2.png';
@@ -57,12 +58,13 @@ const SidebarLink = ({ href, icon: Icon, label, isCollapsed }: SidebarLinkProps)
 const Sidebar = () => {
   const dispatch = useAppDispatch();
   const isSidebarCollapsed = useAppSelector(
-    state => state.global.isSidebarCollapsed
+    (state: RootState) => state.global.isSidebarCollapsed
   );
 
   const toggleSidebar = () => {
     dispatch(setIsSidebarCollapsed(!isSidebarCollapsed));
   };
+  const ability = useAbility();
   const sidebarClassNames = `fixed top-0 bottom-0 z-0 flex flex-col ${
     isSidebarCollapsed ? 'w-0 md:w-16' : 'w-72 md:w-64'
   } bg-gradient-to-b bg-[length:50%_150%] from-[#ffffff] to-[#e4f0ff] transition-all duration-300 overflow-visible shadow-md z-40 figtree-font`;
@@ -70,7 +72,7 @@ const Sidebar = () => {
   return (
     <div className={`bg-gray-200 ${sidebarClassNames}`}>
       <div
-        className={`flex gap-3 justify-between md:justify-normal items-center pt-8 ${
+        className={`flex gap-3 justify-between md:justify-normal items-center pt-6 ${
           isSidebarCollapsed ? 'px-5' : 'px-8'
         }`}
       >
@@ -81,7 +83,7 @@ const Sidebar = () => {
             width={isSidebarCollapsed ? 27 : 108}
             height={isSidebarCollapsed ? 27 : 90}
             quality={100}
-            className={`rounded ${isSidebarCollapsed ? 'w-8 h-8' : 'w-40 h-12'}`}
+            className={`rounded ${isSidebarCollapsed ? 'w-8 h-8' : 'w-34 h-8'}`}
           />
         </div>
 
@@ -103,8 +105,9 @@ const Sidebar = () => {
         <SidebarLink href="/tasks" icon={LayoutList} label="Tasks" isCollapsed={isSidebarCollapsed} />
         <SidebarLink href="/vendors" icon={Truck} label="Vendors" isCollapsed={isSidebarCollapsed} />
         <SidebarLink href="/equipment" icon={Forklift} label="Equipment" isCollapsed={isSidebarCollapsed} />
-        <SidebarLink href="/reports" icon={SquareChartGantt} label="Reports" isCollapsed={isSidebarCollapsed} />
-        <SidebarLink href="/admin" icon={UserPen} label="Admin" isCollapsed={isSidebarCollapsed} />
+        {ability.can('manage', 'AppSettings') && (
+          <SidebarLink href="/admin" icon={UserPen} label="Admin" isCollapsed={isSidebarCollapsed} />
+        )}
       </div>
       
       <div className="mb-10">

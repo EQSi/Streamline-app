@@ -3,7 +3,7 @@
 import Sidebar from '@/src/app/(components)/Sidebar';
 import Navbar from '@/src/app/(components)/Navbar';
 import { useAppSelector } from '@/src/app/redux';
-import { useSession, SessionProvider } from 'next-auth/react';
+import { useSession } from 'next-auth/react';  
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 
@@ -13,9 +13,7 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   return (
-    <SessionProvider>
-      <DashboardLayoutContent>{children}</DashboardLayoutContent>
-    </SessionProvider>
+    <DashboardLayoutContent>{children}</DashboardLayoutContent>
   );
 }
 
