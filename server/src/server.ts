@@ -18,8 +18,8 @@ const app = express();
 const PORT = process.env.PORT || 8080;
 
 const options = {
-  key: fs.readFileSync(path.resolve(__dirname, '../server.key')),
-  cert: fs.readFileSync(path.resolve(__dirname, '../server.crt'))
+  key: Buffer.from(process.env.SSL_KEY_FILE as string, 'base64'),
+  cert: Buffer.from(process.env.SSL_CRT_FILE as string, 'base64'),
 };
 
 // Apply CORS middleware
