@@ -7,8 +7,7 @@ const router = Router();
 router.get('/divisions', async (req: Request, res: Response, next: NextFunction) => {
     try {
         const divisions = await prisma.division.findMany({
-            // Assuming a relation to a company exists so we can include it
-            include: { company: true },
+            include: { company: true, locationAssignments: { include: { location: true } } },
         });
         res.json(divisions);
     } catch (error) {
@@ -23,7 +22,7 @@ router.get('/divisions/:id', async (req: Request, res: Response, next: NextFunct
     try {
         const division = await prisma.division.findUnique({
             where: { id: Number(id) },
-            include: { company: true },
+            include: { company: true, locationAssignments: { include: { location: true } } },
         });
         if (division) {
             res.json(division);
@@ -36,7 +35,7 @@ router.get('/divisions/:id', async (req: Request, res: Response, next: NextFunct
     }
 });
 
-// Create a new division (associating it with a company)
+// Create a new division (associating it with a company and location)
 router.post('/divisions', async (req: Request, res: Response, next: NextFunction) => {
     const { companyId, name, location } = req.body as {
         companyId: number;
@@ -54,19 +53,22 @@ router.post('/divisions', async (req: Request, res: Response, next: NextFunction
         const newDivision = await prisma.division.create({
             data: {
                 name,
-                location: {
+                company: { connect: { id: companyId } },
+                locationAssignments: {
                     create: {
-                        street1: location.street1,
-                        street2: location.street2 ?? '',
-                        city: location.city,
-                        state: location.state,
-                        zipCode: location.zipCode,
-                        company: { connect: { id: companyId } }
+                        location: {
+                            create: {
+                                street1: location.street1,
+                                street2: location.street2 ?? '',
+                                city: location.city,
+                                state: location.state,
+                                zipCode: location.zipCode,
+                            },
+                        },
                     },
                 },
-                company: { connect: { id: companyId } },
             },
-            include: { company: true },
+            include: { company: true, locationAssignments: { include: { location: true } } },
         });
         res.status(201).json(newDivision);
     } catch (error) {
@@ -78,16 +80,15 @@ router.post('/divisions', async (req: Request, res: Response, next: NextFunction
 // Update an existing division
 router.put('/divisions/:id', async (req: Request, res: Response, next: NextFunction) => {
     const { id } = req.params;
-    const { name, location } = req.body;
+    const { name } = req.body;
 
     try {
         const updatedDivision = await prisma.division.update({
             where: { id: Number(id) },
             data: {
                 name,
-                location,
             },
-            include: { company: true },
+            include: { company: true, locationAssignments: { include: { location: true } } },
         });
         res.json(updatedDivision);
     } catch (error) {
@@ -111,21 +112,24 @@ router.delete('/divisions/:id', async (req: Request, res: Response, next: NextFu
     }
 });
 
+// Get locations for a specific division
 router.get('/divisions/:id/locations', async (req: Request, res: Response, next: NextFunction) => {
     const { id } = req.params;
     try {
-        const divisionWithLocation = await prisma.division.findUnique({
+        const division = await prisma.division.findUnique({
             where: { id: Number(id) },
-            include: { location: true },
+            include: { locationAssignments: { include: { location: true } } },
         });
-        if (divisionWithLocation && divisionWithLocation.location) {
-            res.json(divisionWithLocation.location);
+
+        if (division && division.locationAssignments) {
+            const locations = division.locationAssignments.map(la => la.location);
+            res.json(locations);
         } else {
-            res.status(404).json({ error: 'Division or location not found' });
+            res.status(404).json({ error: 'Division or locations not found' });
         }
     } catch (error) {
-        console.error('Error fetching division location:', error);
-        res.status(500).json({ error: 'Failed to fetch division location', details: (error as Error).message });
+        console.error('Error fetching division locations:', error);
+        res.status(500).json({ error: 'Failed to fetch division locations', details: (error as Error).message });
     }
 });
 

@@ -1,4 +1,5 @@
 import { Router, Request, Response, NextFunction } from 'express';
+import asyncHandler from 'express-async-handler';
 import prisma from '../prismaClient'; // Ensure you have a Prisma client setup
 import { CompanyType, EmployeeStatus } from '@prisma/client'; // Import the enums from Prisma
 
@@ -122,24 +123,31 @@ router.post('/companies/:companyId/divisions', async (req: Request, res: Respons
         };
     };
     try {
+        // Create the division and simultaneously add a location assignment with a new Location
         const newDivision = await prisma.division.create({
             data: {
                 name,
-                location: {
-                    create: {
-                        ...location,
-                        street2: location.street2 || '',
-                        company: {
-                            connect: { id: Number(companyId) },
-                        },
-                    },
-                },
                 company: {
                     connect: { id: Number(companyId) },
                 },
+                locationAssignments: {
+                    create: {
+                        location: {
+                            create: {
+                                street1: location.street1,
+                                street2: location.street2 || '',
+                                city: location.city,
+                                state: location.state,
+                                zipCode: location.zipCode,
+                            }
+                        }
+                    }
+                }
             },
             include: {
-                location: true,
+                locationAssignments: {
+                    include: { location: true }
+                },
                 company: true,
             }
         });
@@ -150,14 +158,16 @@ router.post('/companies/:companyId/divisions', async (req: Request, res: Respons
     }
 });
 
-// Get all divisions for a specific company
 router.get('/companies/:companyId/divisions', async (req: Request, res: Response, next: NextFunction) => {
     const { companyId } = req.params;
     try {
+        // Include the assigned locations via locationAssignments
         const divisions = await prisma.division.findMany({
             where: { companyId: Number(companyId) },
             include: {
-                location: true,
+                locationAssignments: {
+                    include: { location: true }
+                }
             },
         });
         res.json(divisions);
@@ -170,27 +180,42 @@ router.get('/companies/:companyId/divisions', async (req: Request, res: Response
 router.get('/divisions/:divisionId/locations', async (req: Request, res: Response, next: NextFunction) => {
     const { divisionId } = req.params;
     try {
+        // Find the division and include its location assignments (and nested locations)
         const division = await prisma.division.findUnique({
             where: { id: Number(divisionId) },
-            include: { location: true },
+            include: { locationAssignments: { include: { location: true } } },
         });
         if (!division) {
             res.status(404).json({ error: 'Division not found' });
         } else {
-            // Return the location in an array to match the axios.get() call
-            res.json(division.location ? [division.location] : []);
+            // Extract the locations from locationAssignments and return as an array
+            const locations = division.locationAssignments.map(assignment => assignment.location);
+            res.json(locations);
         }
     } catch (error) {
         console.error('Error fetching locations for division:', error);
         res.status(500).json({ error: 'Failed to fetch locations', details: (error as Error).message });
     }
 });
-// Update a location for a specific division
+
 router.put('/divisions/:divisionId/locations/:locationId', async (req: Request, res: Response, next: NextFunction) => {
     const { divisionId, locationId } = req.params;
     const { street1, street2, city, state, zipCode } = req.body;
     try {
-        // Optionally, you could verify the location belongs to the division before updating
+        // Verify the location is assigned to the provided division
+        const assignment = await prisma.locationAssignment.findFirst({
+            where: {
+                divisionId: Number(divisionId),
+                locationId: Number(locationId),
+            },
+        });
+
+        if (!assignment) {
+            res.status(404).json({ error: 'Location not found for the specified division' });
+            return;
+        }
+
+        // Update the location fields
         const updatedLocation = await prisma.location.update({
             where: { id: Number(locationId) },
             data: {
@@ -201,10 +226,36 @@ router.put('/divisions/:divisionId/locations/:locationId', async (req: Request, 
                 zipCode,
             },
         });
+
         res.json(updatedLocation);
     } catch (error) {
         console.error('Error updating location:', error);
         res.status(500).json({ error: 'Failed to update location', details: (error as Error).message });
+    }
+});
+
+// Create a location assignment for a company and its division
+router.post('/companies/:companyId/divisions/:divisionId/assign-location', async (req: Request, res: Response, next: NextFunction) => {
+    const { companyId, divisionId } = req.params;
+    const { locationId } = req.body as { locationId: number };
+    try {
+        const assignment = await prisma.locationAssignment.create({
+            data: {
+                location: {
+                    connect: { id: locationId },
+                },
+                company: {
+                    connect: { id: Number(companyId) },
+                },
+                division: {
+                    connect: { id: Number(divisionId) },
+                },
+            },
+        });
+        res.status(201).json(assignment);
+    } catch (error) {
+        console.error('Error creating location assignment:', error);
+        res.status(500).json({ error: 'Failed to create location assignment', details: (error as Error).message });
     }
 });
 

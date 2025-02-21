@@ -3,7 +3,7 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import axios from "axios";
 import https from "https";
 import { jwtDecode } from "jwt-decode";
-import type { Session } from "next-auth";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 declare module "next-auth" {
   interface Session {
@@ -35,17 +35,6 @@ export const authOptions = {
     maxAge: 30 * 24 * 60 * 60, // 30 days
     updateAge: 24 * 60 * 60, // Refresh session every 24 hours
   },
-  cookies: {
-    sessionToken: {
-      name: `next-auth.session-token`,
-      options: {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax" as const,
-        path: "/",
-      },
-    },
-  },
   providers: [
     CredentialsProvider({
       name: "Credentials",
@@ -55,12 +44,9 @@ export const authOptions = {
       },
       async authorize(credentials) {
         try {
-          if (!credentials) throw new Error("Missing credentials");
-
-          // Allow self-signed certificates (for local dev)
           const agent = new https.Agent({ rejectUnauthorized: false });
+          if (!credentials) throw new Error("Credentials are required");
 
-          // Call your backend API to authenticate the user
           const response = await axios.post(
             "https://localhost:8080/api/auth/login",
             {
@@ -70,28 +56,29 @@ export const authOptions = {
             { httpsAgent: agent, withCredentials: true }
           );
 
-          if (!response.data.accessToken) throw new Error("Access token missing");
+          if (response.data) {
+            if (!response.data.accessToken) throw new Error("Access token is missing");
 
-          // Decode JWT to extract user ID
-          const decodedToken = jwtDecode<DecodedToken>(response.data.accessToken);
-          const userId = convertWString(decodedToken.userId);
+            const decodedToken = jwtDecode<DecodedToken>(response.data.accessToken);
+            const userId = decodedToken.userId;
 
-          // Fetch user role and permissions from backend
-          const userDetails = await axios.get(`https://localhost:8080/api/users/${userId}`, {
-            headers: {
-              Authorization: `Bearer ${response.data.accessToken}`,
-            },
-            httpsAgent: agent,
-          });
+            const userDetails = await axios.get(`https://localhost:8080/api/users/${userId}`, {
+              headers: {
+                Authorization: `Bearer ${response.data.accessToken}`,
+              },
+              httpsAgent: agent,
+            });
 
-          return {
-            id: userId,
-            username: credentials.username,
-            accessToken: response.data.accessToken,
-            refreshToken: response.data.refreshToken,
-            role: userDetails.data.role,
-            permissions: userDetails.data.permissions,
-          };
+            return {
+              token: response.data.accessToken,
+              id: userId,
+              username: credentials.username,
+              role: userDetails.data.role,
+              permissions: userDetails.data.permissions,
+            };
+          }
+
+          return null;
         } catch (error) {
           console.error("Authentication failed:", error);
           return null;
@@ -100,40 +87,38 @@ export const authOptions = {
     }),
   ],
   callbacks: {
-    async jwt({ token, user }: { token: any; user?: any }) {
+    async jwt({ token, user }) {
       if (user) {
+        token.accessToken = user.token;
         token.id = user.id;
         token.username = user.username;
-        token.accessToken = user.accessToken;
-        token.refreshToken = user.refreshToken;
         token.role = user.role;
         token.permissions = user.permissions;
       }
       return token;
     },
-    async session({ session, token }: { session: Session; token: any }) {
-      session.user = {
-        id: token.id,
-        username: token.username,
-        role: token.role,
-        permissions: token.permissions,
-      };
-      session.accessToken = token.accessToken;
-      session.refreshToken = token.refreshToken;
+    async session({ session, token }) {
+      if (token) {
+        session.accessToken = token.accessToken;
+        session.user = {
+          ...session.user,
+          id: token.id,
+          username: token.username,
+          role: token.role,
+          permissions: token.permissions,
+        };
+      }
       return session;
     },
-    async redirect({ url, baseUrl }: { url: string; baseUrl: string }) {
+    async redirect({ url, baseUrl }) {
       return url.startsWith(baseUrl) ? url : baseUrl;
     },
   },
   pages: {
-    signIn: "/login",
-    error: "/error",
+    signIn: '/login',
+    error: '/error',
   },
-  jwt: {
-    secret: process.env.NEXTAUTH_SECRET,
-  },
-  debug: process.env.NODE_ENV === "development",
+  debug: process.env.NODE_ENV === 'development',
 };
 
 const handler = NextAuth(authOptions);

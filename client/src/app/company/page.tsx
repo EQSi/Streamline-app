@@ -79,15 +79,14 @@ const AddCompanyForm: React.FC<AddCompanyFormProps> = ({ onAddCompany }) => {
                     Authorization: `Bearer ${(session as any).accessToken}`,
                 },
             };
-            const response = await axios.post(
-                'https://localhost:8080/api/companies',
+            // Removed extra fields since the new route only requires name, type, status, and hasDivisions
+            const response = await axiosInstance.post(
+                '/companies',
                 {
                     name,
                     type,
                     status,
                     hasDivisions,
-                    divisions: [],
-                    contracts: [],
                 },
                 config
             );
@@ -185,8 +184,8 @@ const EditCompanyForm: React.FC<EditCompanyFormProps> = ({ company, onUpdateComp
                     Authorization: `Bearer ${(session as any).accessToken}`,
                 },
             };
-            const response = await axios.put(
-                `https://localhost:8080/api/companies/${company.id}`,
+            const response = await axiosInstance.put(
+                `/companies/${company.id}`,
                 { name, type, status, hasDivisions },
                 config
             );
@@ -255,7 +254,6 @@ const EditCompanyForm: React.FC<EditCompanyFormProps> = ({ company, onUpdateComp
         </form>
     );
 };
-
 
 type SortCriteria = 'name' | 'type' | 'active';
 
@@ -426,7 +424,6 @@ const CompaniesPage: React.FC = () => {
                         {showAddCompanyForm ? 'Cancel' : 'Add New Company'}
                     </button>
                 </div>
-                
             </div>
             {showAddCompanyForm && (
                 <AddCompanyForm onAddCompany={handleAddCompany} />

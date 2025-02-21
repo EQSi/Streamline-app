@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, FormEvent } from 'react';
-import Link from 'next/link';
+// Removed unused Link import
 import axios from 'axios';
 import { useParams, useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
@@ -19,7 +19,7 @@ interface Location {
 interface Division {
     id?: number;
     name: string;
-    location?: Location;
+    locationAssignments?: { location: Location }[];
     contracts?: Contract[];
     contacts?: Contact[];
 }
@@ -45,7 +45,7 @@ interface Company {
     hasDivisions: boolean;
     status: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED';
     divisions?: Division[];
-    location?: Location;
+    locationAssignments?: { location: Location }[];
     contracts?: Contract[];
     contacts?: Contact[];
 }
@@ -159,13 +159,8 @@ const CompanyDetailsPage: React.FC = () => {
             };
             try {
                 if (company.hasDivisions && selectedDivision && selectedDivision.id) {
-                    if (selectedDivision.location) {
-                        setLocations([selectedDivision.location]);
-                    } else {
-                        const locationsRes = await axios.get(`https://localhost:8080/api/divisions/${selectedDivision.id}/locations`, config);
-                        const data = locationsRes.data;
-                        setLocations(Array.isArray(data) ? data : [data]);
-                    }
+                    const locationsRes = await axios.get(`https://localhost:8080/api/divisions/${selectedDivision.id}/locations`, config);
+                    setLocations(locationsRes.data);
                 } else {
                     const [locationsRes, contractsRes, contactsRes] = await Promise.all([
                         axios.get(`https://localhost:8080/api/companies/${company.id}/locations`, config),
@@ -254,28 +249,40 @@ const CompanyDetailsPage: React.FC = () => {
         };
 
         try {
-            let response;
+            let locationResponse;
             if (!isNewLocation && editingLocation.id) {
-                response = await axios.put(
-                    `https://localhost:8080/api/divisions/${selectedDivision.id}/locations/${editingLocation.id}`,
-                    editingLocation,
+                // For existing locations, simply assign the location to the division.
+                locationResponse = await axios.post(
+                    `https://localhost:8080/api/companies/${companyId}/divisions/${selectedDivision.id}/assign-location`,
+                    { locationId: editingLocation.id },
                     config
                 );
             } else {
-                response = await axios.post(
-                    `https://localhost:8080/api/divisions/${selectedDivision.id}/locations`,
-                    editingLocation,
+                // First, create a new location in the locations table.
+                const { id, ...locationData } = editingLocation;
+                const newLocationRes = await axios.post(
+                    `https://localhost:8080/api/locations`,
+                    locationData,
                     config
                 );
+                // Create a new location object merging the returned id with the input data.
+                const newLocation = { ...locationData, id: newLocationRes.data.id };
+                // Then assign the new location to the division in the join table.
+                await axios.post(
+                    `https://localhost:8080/api/companies/${companyId}/divisions/${selectedDivision.id}/assign-location`,
+                    { locationId: newLocation.id },
+                    config
+                );
+                locationResponse = { data: newLocation };
             }
             setLocations((prev) => {
-                if (!prev) return [response.data];
+                if (!prev) return [locationResponse.data];
                 if (!isNewLocation) {
                     return prev.map((loc) =>
-                        loc.id === editingLocation.id ? response.data : loc
+                        loc.id === editingLocation.id ? locationResponse.data : loc
                     );
                 }
-                return [...prev, response.data];
+                return [...prev, locationResponse.data];
             });
             setIsEditingLocation(false);
         } catch (error) {
@@ -284,223 +291,216 @@ const CompanyDetailsPage: React.FC = () => {
     };
 
     const renderContent = () => {
-        if (selectedDivision) {
-            return (
-                <div>
-                    <h3 className="text-xl font-semibold mb-2">
-                        {selectedDivision.name}
-                    </h3>
-                    {isEditingLocation ? (
-                        <form onSubmit={handleLocationSubmit} className="bg-gray-100 p-4 rounded shadow space-y-4 mb-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700">Street 1</label>
-                                <input
-                                    type="text"
-                                    value={editingLocation.street1}
-                                    onChange={(e) =>
-                                        setEditingLocation({ ...editingLocation, street1: e.target.value })
-                                    }
-                                    className="border border-gray-300 rounded w-full px-3 py-2 focus:outline-none focus:ring focus:ring-indigo-300"
-                                    required
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700">Street 2</label>
-                                <input
-                                    type="text"
-                                    value={editingLocation.street2}
-                                    onChange={(e) =>
-                                        setEditingLocation({ ...editingLocation, street2: e.target.value })
-                                    }
-                                    className="border border-gray-300 rounded w-full px-3 py-2 focus:outline-none focus:ring focus:ring-indigo-300"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700">City</label>
-                                <input
-                                    type="text"
-                                    value={editingLocation.city}
-                                    onChange={(e) =>
-                                        setEditingLocation({ ...editingLocation, city: e.target.value })
-                                    }
-                                    className="border border-gray-300 rounded w-full px-3 py-2 focus:outline-none focus:ring focus:ring-indigo-300"
-                                    required
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700">State</label>
-                                <input
-                                    type="text"
-                                    value={editingLocation.state}
-                                    onChange={(e) =>
-                                        setEditingLocation({ ...editingLocation, state: e.target.value })
-                                    }
-                                    className="border border-gray-300 rounded w-full px-3 py-2 focus:outline-none focus:ring focus:ring-indigo-300"
-                                    required
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700">Zip Code</label>
-                                <input
-                                    type="text"
-                                    value={editingLocation.zipCode}
-                                    onChange={(e) =>
-                                        setEditingLocation({ ...editingLocation, zipCode: e.target.value })
-                                    }
-                                    className="border border-gray-300 rounded w-full px-3 py-2 focus:outline-none focus:ring focus:ring-indigo-300"
-                                    required
-                                />
-                            </div>
-                            <div className="flex space-x-4">
-                                <button type="submit" className="bg-blue-600 text-white rounded px-4 py-2 hover:bg-blue-700">
-                                    {isNewLocation ? 'Add Location' : 'Update Location'}
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => setIsEditingLocation(false)}
-                                    className="bg-gray-600 text-white rounded px-4 py-2 hover:bg-gray-700"
-                                >
-                                    Cancel
-                                </button>
-                            </div>
-                        </form>
-                    ) : null}
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        if (!company) {
+            return null;
+        }
+        // Use selected division name if present, otherwise use a generic header.
+        const header = company.hasDivisions && selectedDivision ? selectedDivision.name : "Company Details";
+        return (
+            <div>
+                <h3 className="text-xl font-semibold mb-2">{header}</h3>
+                {isEditingLocation && (
+                    <form onSubmit={handleLocationSubmit} className="bg-gray-100 p-4 rounded shadow space-y-4 mb-4">
                         <div>
-                            <h4 className="font-semibold">Locations</h4>
-                            {locations && locations.length > 0 ? (
-                                <div className="space-y-2">
-                                    {locations.map((loc, index) => {
-                                        const streetParts = [];
-                                        if (loc.street1 && loc.street1.trim() !== '') {
-                                            streetParts.push(loc.street1);
+                            <label className="block text-sm font-medium text-gray-700">Street 1</label>
+                            <input
+                                type="text"
+                                value={editingLocation.street1}
+                                onChange={(e) =>
+                                    setEditingLocation({ ...editingLocation, street1: e.target.value })
+                                }
+                                className="border border-gray-300 rounded w-full px-3 py-2 focus:outline-none focus:ring focus:ring-indigo-300"
+                                required
+                            />
+                            {/* Auto-fill suggestions based on Street 1 input */}
+                            {editingLocation.street1 && (
+                                <ul className="border border-gray-300 rounded mt-1 bg-white max-h-40 overflow-y-auto">
+                                    {locations
+                                        .filter(loc =>
+                                            loc.street1.toLowerCase().includes(editingLocation.street1.toLowerCase())
+                                        )
+                                        .map((suggestion) => (
+                                            <li
+                                                key={suggestion.id}
+                                                className="p-2 hover:bg-gray-200 cursor-pointer text-sm"
+                                                onClick={() => {
+                                                    setEditingLocation(suggestion);
+                                                    setIsNewLocation(false);
+                                                }}
+                                            >
+                                                {suggestion.street1}, {suggestion.city}, {suggestion.state} {suggestion.zipCode}
+                                            </li>
+                                        ))}
+                                </ul>
+                            )}
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">Street 2</label>
+                            <input
+                                type="text"
+                                value={editingLocation.street2 || ''}
+                                onChange={(e) =>
+                                    setEditingLocation({ ...editingLocation, street2: e.target.value })
+                                }
+                                className="border border-gray-300 rounded w-full px-3 py-2 focus:outline-none focus:ring focus:ring-indigo-300"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">City</label>
+                            <input
+                                type="text"
+                                value={editingLocation.city}
+                                onChange={(e) =>
+                                    setEditingLocation({ ...editingLocation, city: e.target.value })
+                                }
+                                className="border border-gray-300 rounded w-full px-3 py-2 focus:outline-none focus:ring focus:ring-indigo-300"
+                                required
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">State</label>
+                            <input
+                                type="text"
+                                value={editingLocation.state}
+                                onChange={(e) =>
+                                    setEditingLocation({ ...editingLocation, state: e.target.value })
+                                }
+                                className="border border-gray-300 rounded w-full px-3 py-2 focus:outline-none focus:ring focus:ring-indigo-300"
+                                required
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">Zip Code</label>
+                            <input
+                                type="text"
+                                value={editingLocation.zipCode}
+                                onChange={(e) =>
+                                    setEditingLocation({ ...editingLocation, zipCode: e.target.value })
+                                }
+                                className="border border-gray-300 rounded w-full px-3 py-2 focus:outline-none focus:ring focus:ring-indigo-300"
+                                required
+                            />
+                        </div>
+                        {/* Option to select directly from existing locations */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">Or select an existing address</label>
+                            <select
+                                value={editingLocation.id || ''}
+                                onChange={(e) => {
+                                    const selectedId = parseInt(e.target.value);
+                                    const selectedLocation = locations.find(loc => loc.id === selectedId);
+                                    if (selectedLocation) {
+                                        setEditingLocation(selectedLocation);
+                                        setIsNewLocation(false);
+                                    }
+                                }}
+                                className="border border-gray-300 rounded w-full px-3 py-2 focus:outline-none focus:ring focus:ring-indigo-300"
+                            >
+                                <option value="">Select an address</option>
+                                {locations.map((loc) => (
+                                    <option key={loc.id} value={loc.id}>
+                                        {loc.street1}, {loc.city}, {loc.state} {loc.zipCode}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                        <div className="flex space-x-4">
+                            <button type="submit" className="bg-blue-600 text-white rounded px-4 py-2 hover:bg-blue-700">
+                                {isNewLocation ? 'Add Location' : 'Update Location'}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setIsEditingLocation(false)}
+                                className="bg-gray-600 text-white rounded px-4 py-2 hover:bg-gray-700"
+                            >
+                                Cancel
+                            </button>
+                        </div>
+                    </form>
+                )}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <h4 className="font-semibold">Locations</h4>
+                        {locations && locations.length > 0 ? (
+                            <div className="space-y-2">
+                                {locations.map((loc, index) => {
+                                    const streetParts = [];
+                                    if (loc.street1 && loc.street1.trim() !== '') {
+                                        streetParts.push(loc.street1);
+                                    }
+                                    if (loc.street2 && loc.street2.trim() !== '') {
+                                        streetParts.push(loc.street2);
+                                    }
+                                    const locString = `${streetParts.join(', ')}, ${loc.city}, ${loc.state} ${loc.zipCode}`;
+                                    const openMap = () => {
+                                        const encodedAddress = encodeURIComponent(locString);
+                                        if (/iPhone|iPad|iPod/.test(navigator.userAgent)) {
+                                            window.open(`https://maps.apple.com/?q=${encodedAddress}`, "_blank");
+                                        } else {
+                                            window.open(`https://www.google.com/maps/search/?api=1&query=${encodedAddress}`, "_blank");
                                         }
-                                        if (loc.street2 && loc.street2.trim() !== '') {
-                                            streetParts.push(loc.street2);
-                                        }
-                                        const locString = `${streetParts.join(', ')}, ${loc.city}, ${loc.state} ${loc.zipCode}`;
-                                        const openMap = () => {
-                                            const encodedAddress = encodeURIComponent(locString);
-                                            if (/iPhone|iPad|iPod/.test(navigator.userAgent)) {
-                                                window.open(`https://maps.apple.com/?q=${encodedAddress}`, "_blank");
-                                            } else {
-                                                window.open(`https://www.google.com/maps/search/?api=1&query=${encodedAddress}`, "_blank");
-                                            }
-                                        };
-
-                                        return (
-                                            <div key={loc.id ?? index} className="flex items-center space-x-2">
-                                                <div
-                                                    className="flex-1 text-gray-800 border-b border-gray-200 pb-1 cursor-pointer select-text"
-                                                    onClick={() => {
-                                                        navigator.clipboard.writeText(locString);
-                                                        alert('Location copied to clipboard');
-                                                    }}
-                                                >
-                                                    {locString}
-                                                </div>
-                                                <button onClick={openMap} className="flex items-center space-x-1 text-blue-500 hover:underline">
-                                                    <MapPin className="h-5 w-5" />
-                                                </button>
-                                                <button onClick={() => handleEditLocationClick(loc)} className="flex items-center space-x-1 text-green-500 hover:underline">
-                                                    <Edit2 className="h-5 w-5" />
-                                                </button>
+                                    };
+                                    return (
+                                        <div key={loc.id ?? index} className="flex items-center space-x-2">
+                                            <div
+                                                className="flex-1 text-gray-800 border-b border-gray-200 pb-1 cursor-pointer select-text"
+                                                onClick={() => {
+                                                    navigator.clipboard.writeText(locString);
+                                                    alert('Location copied to clipboard');
+                                                }}
+                                            >
+                                                {locString}
                                             </div>
-                                        );
-                                    })}
-                                </div>
-                            ) : (
-                                <p className="text-gray-600 italic">No location info available</p>
-                            )}
-                            <div className="mt-2">
-                                <button
-                                    onClick={handleAddLocationClick}
-                                    className="flex items-center space-x-1 text-blue-500 hover:underline"
-                                >
-                                    <Plus className="h-5 w-5" />
-                                    <span>Add Location</span>
-                                </button>
+                                            <button onClick={openMap} className="flex items-center space-x-1 text-blue-500 hover:underline">
+                                                <MapPin className="h-5 w-5" />
+                                            </button>
+                                            <button onClick={() => handleEditLocationClick(loc)} className="flex items-center space-x-1 text-green-500 hover:underline">
+                                                <Edit2 className="h-5 w-5" />
+                                            </button>
+                                        </div>
+                                    );
+                                })}
                             </div>
-                        </div>
-                      
-                        <div>
-                            <h4 className="font-semibold">Contracts</h4>
-                            {contracts.length > 0 ? (
-                                <ul>
-                                    {contracts.map((contract) => (
-                                        <li key={contract.id}>{contract.title}</li>
-                                    ))}
-                                </ul>
-                            ) : (
-                                <p>No contracts available</p>
-                            )}
-                        </div>
-                        <div>
-                            <h4 className="font-semibold">Contacts</h4>
-                            {contacts.length > 0 ? (
-                                <ul>
-                                    {contacts.map((contact) => (
-                                        <li key={contact.id}>{contact.name}</li>
-                                    ))}
-                                </ul>
-                            ) : (
-                                <p>No contacts available</p>
-                            )}
+                        ) : (
+                            <p className="text-gray-600 italic">No location info available</p>
+                        )}
+                        <div className="mt-2">
+                            <button
+                                onClick={handleAddLocationClick}
+                                className="flex items-center space-x-1 text-blue-500 hover:underline"
+                            >
+                                <Plus className="h-5 w-5" />
+                                <span>Add Location</span>
+                            </button>
                         </div>
                     </div>
-                </div>
-            );
-        }
-        if (company) {
-            return (
-                <div>
-                    <h3 className="text-xl font-semibold mb-2">Company Details</h3>
-                    {/* Company-specific details can be rendered here */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div>
-                            <h4 className="font-semibold">Locations</h4>
-                            {locations.length > 0 ? (
-                                <ul>
-                                    {locations.map((loc) => (
-                                        <li key={loc.id}>
-                                            {loc.street1}, {loc.city}
-                                        </li>
-                                    ))}
-                                </ul>
-                            ) : (
-                                <p>No location info available</p>
-                            )}
-                        </div>
-                        <div>
-                            <h4 className="font-semibold">Contracts</h4>
-                            {contracts.length > 0 ? (
-                                <ul>
-                                    {contracts.map((contract) => (
-                                        <li key={contract.id}>{contract.title}</li>
-                                    ))}
-                                </ul>
-                            ) : (
-                                <p>No contracts available</p>
-                            )}
-                        </div>
-                        <div>
-                            <h4 className="font-semibold">Contacts</h4>
-                            {contacts.length > 0 ? (
-                                <ul>
-                                    {contacts.map((contact) => (
-                                        <li key={contact.id}>{contact.name}</li>
-                                    ))}
-                                </ul>
-                            ) : (
-                                <p>No contacts available</p>
-                            )}
-                        </div>
+                    <div>
+                        <h4 className="font-semibold">Contracts</h4>
+                        {contracts.length > 0 ? (
+                            <ul>
+                                {contracts.map((contract) => (
+                                    <li key={contract.id}>{contract.title}</li>
+                                ))}
+                            </ul>
+                        ) : (
+                            <p>No contracts available</p>
+                        )}
+                    </div>
+                    <div>
+                        <h4 className="font-semibold">Contacts</h4>
+                        {contacts.length > 0 ? (
+                            <ul>
+                                {contacts.map((contact) => (
+                                    <li key={contact.id}>{contact.name}</li>
+                                ))}
+                            </ul>
+                        ) : (
+                            <p>No contacts available</p>
+                        )}
                     </div>
                 </div>
-            );
-        }
-        return null;
+            </div>
+        );
     };
 
     return (

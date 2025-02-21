@@ -16,6 +16,7 @@ import {
   Wrench,
   UserPen,
   Building2,
+  MapPinned,
 } from 'lucide-react';
 import Link from 'next/link';
 import { setIsSidebarCollapsed } from '@/src/state';
@@ -100,6 +101,7 @@ const Sidebar = () => {
         <SidebarLink href="/schedule" icon={Calendar} label="Schedule" isCollapsed={isSidebarCollapsed} />
         <SidebarLink href="/jobs" icon={Wrench} label="Jobs" isCollapsed={isSidebarCollapsed} />
         <SidebarLink href="/company" icon={Building2} label="Companies" isCollapsed={isSidebarCollapsed} />
+        <SidebarLink href="/locations" icon={MapPinned} label="Locations" isCollapsed={isSidebarCollapsed} />
         <SidebarLink href="/customers" icon={Users} label="Customers" isCollapsed={isSidebarCollapsed} />
         <SidebarLink href="/contacts" icon={Contact} label="Contacts" isCollapsed={isSidebarCollapsed} />
         <SidebarLink href="/tasks" icon={LayoutList} label="Tasks" isCollapsed={isSidebarCollapsed} />
