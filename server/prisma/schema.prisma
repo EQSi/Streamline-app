@@ -396,6 +396,7 @@ model Location {
   id               Int           @id @default(autoincrement())
   locationAssignments LocationAssignment[]
   jobs             Job[]
+  name             String?       @db.VarChar(100)
   street1          String        @db.VarChar(200)
   street2          String        @db.VarChar(200)
   city             String        @db.VarChar(100)

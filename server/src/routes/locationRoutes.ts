@@ -3,7 +3,6 @@ import { PrismaClient, Location } from "@prisma/client";
 
 const prisma = new PrismaClient();
 const router = Router();
-
 router.get("/locations", async (_req: Request, res: Response) => {
     try {
         const locations = await prisma.location.findMany({
@@ -35,12 +34,12 @@ router.get("/locations", async (_req: Request, res: Response) => {
                 .filter((la: any) => la.division)
                 .map((la: any) => la.division!.name);
 
-            // Remove duplicate names if any
             const uniqueCompanies = Array.from(new Set(companies));
             const uniqueDivisions = Array.from(new Set(divisions));
 
             return {
                 id: loc.id.toString(),
+                name: loc.name,
                 companies: uniqueCompanies,
                 address: `${loc.street1}${loc.street2 ? " " + loc.street2 : ""}, ${loc.city}, ${loc.state} ${loc.zipCode}`,
                 divisions: uniqueDivisions,
@@ -55,7 +54,7 @@ router.get("/locations", async (_req: Request, res: Response) => {
 });
 
 router.post("/locations", async (req: Request, res: Response) => {
-    const { street1, street2, city, state, zipCode } = req.body;
+    const { name, street1, street2, city, state, zipCode } = req.body;
 
     try {
         // Calculate a new id; if there is already 1 record, the new id will be 2
@@ -65,6 +64,7 @@ router.post("/locations", async (req: Request, res: Response) => {
         const newLocation = await prisma.location.create({
             data: {
                 id: newId,
+                name,
                 street1,
                 street2,
                 city,
@@ -76,6 +76,26 @@ router.post("/locations", async (req: Request, res: Response) => {
         res.status(201).json(newLocation);
     } catch (error) {
         console.error("Error creating location:", error);
+        res.status(500).json({ error: "Internal server error" });
+    }
+});
+
+router.get("/locations-now", async (_req: Request, res: Response) => {
+    try {
+        const locations = await prisma.location.findMany({
+            select: {
+                id: true,
+                name: true,
+                street1: true,
+                street2: true,
+                city: true,
+                state: true,
+                zipCode: true,
+            },
+        });
+        res.json(locations);
+    } catch (error) {
+        console.error("Error fetching locations:", error);
         res.status(500).json({ error: "Internal server error" });
     }
 });
