@@ -13,16 +13,16 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// User-Related Tables
 model User {
-  id                 Int       @id @default(autoincrement())
+  id                 String    @id @default(uuid())
   username           String    @unique @db.VarChar(100)
   password           String
-  roles              Role      @default(Employee)
-  googleId           String?    @unique
+  roleId             String    
+  role               Role      @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  googleId           String?   @unique
   googleAccessToken  String?
   googleRefreshToken String?
-  isAdmin            Boolean   @default(false)
+  permissions        UserPermission[]
   employee           Employee?
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
@@ -32,12 +32,12 @@ model User {
 }
 
 model Employee {
-  id                 Int       @id @default(autoincrement())
+  id                 String       @id @default(uuid())
   firstName          String    @db.VarChar(50)
   lastName           String    @db.VarChar(50)
   email              String    @unique @db.VarChar(100)
   phoneNumber        String?   @db.VarChar(20)
-  position           String    @db.VarChar(100)
+  position           Position  @default(ProjectManager)
   startDate          DateTime?
   salary             Decimal   @db.Decimal(10,2)
   status             EmployeeStatus @default(Active)
@@ -46,7 +46,7 @@ model Employee {
   state              String?   @db.VarChar(50)
   zipCode            String?   @db.VarChar(10)
   user               User      @relation(fields: [userId], references: [id])
-  userId             Int       @unique
+  userId             String    @unique
   timeEntries         TimeEntry[]
   approvedTimeEntries TimeEntry[] @relation("TimeEntryApprovals")
   certifications     EmployeeCertification[]
@@ -64,10 +64,49 @@ model Employee {
   @@index([userId])
 }
 
+model Role {
+  id                String   @id @default(uuid())
+  name              String   @unique @db.VarChar(50)
+  permissionGroupId String   @db.Uuid
+  permissionGroup   PermissionGroup @relation(fields: [permissionGroupId], references: [id], onDelete: Cascade)
+  users             User[]
+}
+
+model PermissionGroup {
+  id          String  @id @default(uuid()) @db.Uuid
+  name        String  @unique @db.VarChar(50)
+  permissions PermissionOnGroup[]
+  roles       Role[]
+}
+
+model Permission {
+  id   String  @id @default(uuid())
+  name String  @unique
+  users UserPermission[]
+  permissionGroups PermissionOnGroup[]
+}
+
+model UserPermission {
+  id           String      @id @default(uuid())
+  userId       String
+  permissionId String
+  user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  permission   Permission  @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+}
+
+model PermissionOnGroup {
+  id              String      @id @default(uuid())
+  permissionId    String
+  permissionGroupId String    @db.Uuid
+  permission      Permission  @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  permissionGroup PermissionGroup @relation(fields: [permissionGroupId], references: [id], onDelete: Cascade)
+}
+
+
 model TimeEntry {
   id            Int             @id @default(autoincrement())
   employee      Employee        @relation(fields: [employeeId], references: [id])
-  employeeId    Int
+  employeeId    String
   type          TimeEntryType
   date          DateTime
   startTime     DateTime
@@ -80,7 +119,7 @@ model TimeEntry {
   job           Job?            @relation(fields: [jobId], references: [id])
   jobId         Int?
   approvedBy    Employee?       @relation("TimeEntryApprovals", fields: [approvedById], references: [id])
-  approvedById  Int?
+  approvedById  String?
   approvedAt    DateTime?
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
@@ -107,7 +146,7 @@ model Certification {
 model EmployeeCertification {
   id               Int           @id @default(autoincrement())
   employee         Employee      @relation(fields: [employeeId], references: [id])
-  employeeId       Int
+  employeeId       String
   certification    Certification @relation(fields: [certificationId], references: [id])
   certificationId  Int
   dateObtained     DateTime
@@ -127,7 +166,7 @@ model Task {
   priority         Priority   @default(Medium)
   dueDate          DateTime?
   employee         Employee   @relation(fields: [employeeId], references: [id])
-  employeeId       Int
+  employeeId       String
   job              Job?      @relation(fields: [jobId], references: [id])
   jobId            Int?
   createdAt        DateTime  @default(now())
@@ -192,7 +231,7 @@ model JobEmployee {
   job              Job      @relation(fields: [jobId], references: [id])
   jobId            Int
   employee         Employee @relation(fields: [employeeId], references: [id])
-  employeeId       Int
+  employeeId       String
   role             JobRole  @default(Worker)
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
@@ -200,22 +239,6 @@ model JobEmployee {
   @@unique([jobId, employeeId])
 }
 
-model Location {
-  id            Int       @id @default(autoincrement())
-  name          String    @db.VarChar(100)
-  address       String    @db.VarChar(200)
-  city          String    @db.VarChar(100)
-  state         String    @db.VarChar(50)
-  zipCode       String    @db.VarChar(10)
-  company       Company[]
-  jobs          Job[]
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-
-  @@index([name])
-  @@index([city])
-  @@index([state])
-}
 
 model JobTemplate {
   id            Int       @id @default(autoincrement())
@@ -325,7 +348,7 @@ model Receipt {
   description   String    @db.Text
   imageUrl      String?
   employee      Employee  @relation(fields: [employeeId], references: [id])
-  employeeId    Int
+  employeeId    String
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
@@ -334,18 +357,19 @@ model Receipt {
   @@index([date])
 }
 
+
 model Company {
   id               Int           @id @default(autoincrement())
-  name             String        @db.VarChar(100)
+  name             String        @unique @db.VarChar(100)
   type             CompanyType
-  email            String?       @db.VarChar(100)
-  locationId       Int?
-  location         Location?    @relation(fields: [locationId], references: [id])
+  hasDivisions     Boolean       @default(false)
+  status           CompanyStatus @default(ACTIVE)
   divisions        Division[]
-  ratings          CompanyRating[]
+  locationAssignments LocationAssignment[]
   contracts        Contract[]
-  jobs             Job[]         // For customer relation
   contacts         Contact[]
+  jobs             Job[]
+  ratings          CompanyRating[]
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
 
@@ -356,23 +380,55 @@ model Company {
 model Division {
   id               Int           @id @default(autoincrement())
   name             String        @db.VarChar(100)
-  description      String?       @db.Text
   company          Company       @relation(fields: [companyId], references: [id])
   companyId        Int
+  locationAssignments LocationAssignment[]
   contracts        Contract[]
+  contacts         Contact[]
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
 
-  @@index([name])
+  @@unique([name, companyId])
   @@index([companyId])
 }
+
+model Location {
+  id               Int           @id @default(autoincrement())
+  locationAssignments LocationAssignment[]
+  jobs             Job[]
+  name             String?       @db.VarChar(100)
+  street1          String        @db.VarChar(200)
+  street2          String        @db.VarChar(200)
+  city             String        @db.VarChar(100)
+  state            String        @db.VarChar(50)
+  zipCode          String        @db.VarChar(10)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+}
+
+model LocationAssignment {
+  id          Int      @id @default(autoincrement())
+  location    Location @relation(fields: [locationId], references: [id])
+  locationId  Int
+  company     Company? @relation(fields: [companyId], references: [id])
+  companyId   Int?
+  division    Division? @relation(fields: [divisionId], references: [id])
+  divisionId  Int?
+
+  @@unique([locationId, companyId, divisionId])
+  @@index([locationId])
+  @@index([companyId])
+  @@index([divisionId])
+}
+
 
 model CompanyRating {
   id               Int           @id @default(autoincrement())
   company          Company       @relation(fields: [companyId], references: [id])
   companyId        Int
   employee         Employee      @relation(fields: [employeeId], references: [id])
-  employeeId       Int
+  employeeId       String
+  category         RatingCategory
   rating           Int           // 1-5 scale
   comment          String?       @db.Text
   createdAt        DateTime      @default(now())
@@ -380,6 +436,14 @@ model CompanyRating {
 
   @@unique([companyId, employeeId])
   @@index([rating])
+}
+
+enum RatingCategory {
+  QUALITY
+  RELIABILITY
+  COMMUNICATION
+  PRICING
+  OVERALL
 }
 
 model Contract {
@@ -394,7 +458,7 @@ model Contract {
   endDate          DateTime?
   status           ContractStatus @default(Active)
   rates            ContractRate[]
-  documents        Document[]    // Store document URLs
+  documents        Document[]    
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
 
@@ -429,10 +493,12 @@ model Contact {
   notes         String?     @db.Text
   company       Company?    @relation(fields: [companyId], references: [id])
   companyId     Int?
+  division      Division?   @relation(fields: [divisionId], references: [id])
+  divisionId    Int?
   job           Job?        @relation(fields: [jobId], references: [id])
   jobId         Int?
   employee      Employee?   @relation(fields: [employeeId], references: [id])
-  employeeId    Int?
+  employeeId    String?
 
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
@@ -482,7 +548,7 @@ model Document {
   contract    Contract? @relation(fields: [contractId], references: [id])
   contractId  Int?
   createdBy   Employee @relation("EmployeeCreatedDocuments", fields: [employeeId], references: [id])
-  employeeId  Int
+  employeeId  String
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -496,7 +562,7 @@ model Notification {
   message     String    @db.Text
   isRead      Boolean   @default(false)
   employee    Employee  @relation(fields: [employeeId], references: [id])
-  employeeId  Int
+  employeeId  String
   createdAt   DateTime  @default(now())
 
   @@index([employeeId, isRead])
@@ -506,6 +572,12 @@ enum ContactType {
   JobContact
   CompanyContact
   EmployeeContact
+}
+
+enum CompanyStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
 }
 
 enum ContractStatus {
@@ -580,11 +652,15 @@ enum EmployeeStatus {
   Suspended
 }
 
-enum Role {
-  Employee
-  Manager
+
+enum Position {
   ProjectManager
-  Office
+  FieldManager
+  FieldTechnicianL1
+  FieldTechnicianL2
+  FieldTechnicianL3
+  OfficeStaff
+  Owner
 }
 
 enum TimeEntryType {

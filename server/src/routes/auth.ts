@@ -1,14 +1,14 @@
 
-
+/*
 import { Router } from "express";
 import { NextApiRequest, NextApiResponse } from "next";
-import { handler } from "../../../client/src/app/api/auth/[...nextauth]/route"; // Import the NextAuth handler
+import { GET as handler } from "../../../client/src/app/api/auth/[...nextauth]/route"; 
 
 const authRouter = Router();
 
-// Forward all NextAuth requests to the Next.js handler
 authRouter.all("/api/auth/*", (req, res) => {
-  return handler(req as NextApiRequest, res as NextApiResponse);
+  return handler(req as unknown as NextApiRequest, res as unknown as NextApiResponse);
 });
 
 export default authRouter;
+*/

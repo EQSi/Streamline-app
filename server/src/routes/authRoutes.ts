@@ -26,11 +26,15 @@ router.post('/login', async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    const token = jwt.sign({ userId: user.id, isAdmin: user.isAdmin }, process.env.JWT_SECRET!, {
+    const accessToken = jwt.sign({ userId: user.id }, process.env.JWT_SECRET!, {
       expiresIn: '1h',
     });
 
-    res.status(200).json({ token });
+    const refreshToken = jwt.sign({ userId: user.id }, process.env.REFRESH_TOKEN_SECRET!, {
+      expiresIn: '7d',
+    });
+
+    res.status(200).json({ accessToken, refreshToken });
   } catch (error) {
     res.status(500).json({ error: 'Internal server error' });
   }
@@ -51,18 +55,39 @@ router.post('/google-login', async (req: Request, res: Response): Promise<void> 
           googleAccessToken,
           googleRefreshToken,
           username: `google_${googleId}`,
-          password: '', // No password for Google login
+          password: '',
+          role: { connect: { name: 'USER' } },
         },
       });
     }
 
-    const token = jwt.sign({ userId: user.id, isAdmin: user.isAdmin }, process.env.JWT_SECRET!, {
+    const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET!, {
       expiresIn: '1h',
     });
 
     res.json({ token });
   } catch (error) {
     res.status(500).json({ error: 'Internal server error' });
+  }
+});
+router.post('/refresh', async (req: Request, res: Response): Promise<void> => {
+  const { token: refreshToken } = req.body as { token: string };
+
+  if (!refreshToken) {
+    res.status(400).json({ error: 'Token is required' });
+    return;
+  }
+
+  try {
+    const decoded = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET!) as { userId: string };
+
+    const newToken = jwt.sign({ userId: decoded.userId }, process.env.JWT_SECRET!, {
+      expiresIn: '1h',
+    });
+
+    res.status(200).json({ accessToken: newToken });
+  } catch (error) {
+    res.status(401).json({ error: 'Invalid or expired token' });
   }
 });
 

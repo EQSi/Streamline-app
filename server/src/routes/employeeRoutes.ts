@@ -1,11 +1,11 @@
 import { Router, Request, Response } from 'express';
 import prisma from '../prismaClient'; // Ensure you have a Prisma client setup
-import { EmployeeStatus } from '@prisma/client'; // Import the enum from Prisma
+import { EmployeeStatus, Position } from '@prisma/client'; // Import the enums from Prisma
 
 const router = Router();
 
 // Get all employees
-router.get('/employees', async (req: Request, res: Response) => {
+router.get('/employees', async (_req: Request, res: Response) => {
     try {
         const employees = await prisma.employee.findMany({
             include: {
@@ -24,7 +24,7 @@ router.get('/employees/:id', async (req: Request, res: Response) => {
     const { id } = req.params;
     try {
         const employee = await prisma.employee.findUnique({
-            where: { id: Number(id) },
+            where: { id },
             include: {
                 user: true,
             },
@@ -47,10 +47,10 @@ router.post('/employees', async (req: Request, res: Response) => {
         lastName: string;
         email: string;
         phoneNumber: string;
-        position: string;
-        startDate: string; // Changed to string to parse date
+        position: Position;
+        startDate: string; // Using string for date parsing
         status: EmployeeStatus;
-        userId: number;
+        userId: string;
         salary: number;
     };
     try {
@@ -81,7 +81,7 @@ router.put('/employees/:id', async (req: Request, res: Response) => {
     try {
         const [updatedEmployee, updatedUser] = await prisma.$transaction([
             prisma.employee.update({
-                where: { id: Number(id) },
+                where: { id },
                 data: {
                     firstName,
                     lastName,
@@ -99,7 +99,7 @@ router.put('/employees/:id', async (req: Request, res: Response) => {
                 data: {
                     username,
                     password,
-                    roles: role,
+                    role: role,
                 },
             }),
         ]);
@@ -115,7 +115,7 @@ router.delete('/employees/:id', async (req: Request, res: Response) => {
     const { id } = req.params;
     try {
         await prisma.employee.delete({
-            where: { id: Number(id) },
+            where: { id },
         });
         res.status(204).end();
     } catch (error) {

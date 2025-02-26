@@ -7,11 +7,11 @@ import dotenv from 'dotenv';
 import { authenticateToken } from './middleware/authMiddleware'; // Import the JWT authentication middleware
 import authRoutes from './routes/authRoutes';
 import userRoutes from './routes/userRoutes';
-import debugRoutes from './routes/debugRoutes';
-import healthRoute from './routes/healthRoutes';
-import testRoutes from './routes/test';
-import protectedRoutes from './routes/protectedRoutes';
+import companyRoutes from './routes/companyRoutes';
 import employeeRoutes from './routes/employeeRoutes';
+import divisionRoutes from './routes/divisionRoutes';
+import permissionRoutes from './routes/permissionRoutes';
+import locationRoutes from './routes/locationRoutes';
 
 dotenv.config();
 
@@ -19,14 +19,14 @@ const app = express();
 const PORT = process.env.PORT || 8080;
 
 const options = {
-  key: fs.readFileSync(path.resolve(__dirname, '../server.key')),
-  cert: fs.readFileSync(path.resolve(__dirname, '../server.crt'))
+  key: Buffer.from(process.env.SSL_KEY_FILE as string, 'base64'),
+  cert: Buffer.from(process.env.SSL_CRT_FILE as string, 'base64'),
 };
 
 // Apply CORS middleware
 app.use(cors({
   origin: 'https://localhost:3000', // Adjust this based on your frontend URL
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   credentials: true,
 }));
 
@@ -35,13 +35,13 @@ app.use(express.json());
 
 // Routes that don't require authentication
 app.use('/api/auth', authRoutes);
-app.use('/', debugRoutes);
-app.use('/', healthRoute);
-app.use('/api/test', testRoutes);
 
-
+app.use('/api', [authenticateToken], divisionRoutes);
 app.use('/api', [authenticateToken], userRoutes);  // Protect this route with JWT
+app.use('/api', [authenticateToken], companyRoutes); 
 app.use('/api', [authenticateToken], employeeRoutes);   // Protect employee routes with JWT
+app.use('/api', [authenticateToken], permissionRoutes);   // Protect employee routes with JWT
+app.use('/api', [authenticateToken], locationRoutes); 
 
 // HTTPS server setup
 https.createServer(options, app).listen(PORT, () => {

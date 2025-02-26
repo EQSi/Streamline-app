@@ -1,16 +1,71 @@
-"use client";
+'use client';
 
+import bcrypt from 'bcryptjs';
 import { useRouter } from 'next/navigation';
 import React, { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
+import axiosInstance from '@/src/state/axios';
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
+import { Search, ChevronDown } from 'lucide-react';
+
+// Helper to format phone numbers e.g. (123) 456-7890
+const formatPhoneNumber = (value: string) => {
+    const phoneNumber = value.replace(/[^\d]/g, '');
+    if (phoneNumber.length < 4) return phoneNumber;
+    if (phoneNumber.length < 7) {
+        return `(${phoneNumber.slice(0, 3)}) ${phoneNumber.slice(3)}`;
+    }
+    return `(${phoneNumber.slice(0, 3)}) ${phoneNumber.slice(3, 6)}-${phoneNumber.slice(6, 10)}`;
+};
+
+// Helper to format enum position values with spaces (e.g. FieldTechnicianL1 => Field Technician L1)
+const formatPosition = (position: string = ""): string => {
+    return position.replace(/([A-Z])/g, ' $1').trim();
+};
+
+// Utility to hash a password using bcrypt
+async function hashPassword(password: string): Promise<string> {
+    return bcrypt.hash(password, 10);
+}
+
+// Function to validate login credentials
+const validateCredentials = (username: string, password: string) => {
+    const usernameRegex = /^[a-zA-Z][a-zA-Z0-9_]{2,19}$/;
+    const passwordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+
+    const errors: string[] = [];
+
+    if (!usernameRegex.test(username)) {
+        errors.push("Username must be between 3-20 characters, start with a letter, and can only contain letters, numbers, and underscores.");
+    }
+
+    if (!passwordRegex.test(password)) {
+        errors.push("Password must be at least 8 characters long, contain at least one number, one uppercase letter, and one special character.");
+    }
+
+    return {
+        isValid: errors.length === 0,
+        errors,
+    };
+};
+
+// Function to calculate password strength
+const calculatePasswordStrength = (password: string) => {
+    let strength = 0;
+    if (password.length >= 8) strength++;
+    if (/[A-Z]/.test(password)) strength++;
+    if (/\d/.test(password)) strength++;
+    if (/[@$!%*?&]/.test(password)) strength++;
+    return strength;
+};
 
 interface Employee {
-    id: number;
+    id: string;
     firstName: string;
     lastName: string;
     email: string;
     phoneNumber?: string;
-    position: string;
+    position?: string;
     startDate: string;
     status: string;
     userId: number;
@@ -18,7 +73,7 @@ interface Employee {
 }
 
 interface User {
-    id: number;
+    id: string;
     username: string;
     role: string; 
 }
@@ -28,51 +83,45 @@ export default function UserManagementPage() {
     const { data: session } = useSession();
     const [employees, setEmployees] = useState<Employee[]>([]);
     const [users, setUsers] = useState<User[]>([]);
-    const [editingEmployeeId, setEditingEmployeeId] = useState<number | null>(null);
+    const [visibleUserCount, setVisibleUserCount] = useState(25);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [editingEmployeeId, setEditingEmployeeId] = useState<string | null>(null);
+    const [editingPassword, setEditingPassword] = useState("");
     const [newEmployee, setNewEmployee] = useState({
         firstName: "",
         lastName: "",
         email: "",
         phoneNumber: "",
-        position: "",
+        position: "OfficeStaff",
         startDate: "",
         status: "Active",
         userId: 0,
         username: "",
         password: "",
-        role: "Employee",
+        role: "EMPLOYEE",
         salary: 0
     });
     const [showAddEmployeeForm, setShowAddEmployeeForm] = useState(false);
-    const [showActiveEmployees, setShowActiveEmployees] = useState(true);
 
-    const handleShowAddEmployeeForm = () => {
-        setShowAddEmployeeForm(!showAddEmployeeForm);
-    };
-
-    const toggleEmployeeFilter = () => {
-        setShowActiveEmployees(!showActiveEmployees);
-    };
+    // New filter states
+    const [searchQuery, setSearchQuery] = useState('');
+    const [statusFilter, setStatusFilter] = useState('all'); // options: all, active, onleave, terminated, suspended
+    const [groupFilter, setGroupFilter] = useState('all'); // filter by position
+    const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
 
     useEffect(() => {
-        if (!session || !session.accessToken) return;
+        if (!session || !(session as any).accessToken) return;
 
         const fetchEmployees = async () => {
             try {
-                const res = await fetch('https://localhost:8080/api/employees', {
-                    credentials: 'include',
+                const res = await axiosInstance.get('/employees', {
                     headers: {
                         "Authorization": `Bearer ${session.accessToken}`,
                         "Content-Type": "application/json",
                         "Cache-Control": "no-store",
                     },
                 });
-                if (res.ok) {
-                    const data = await res.json();
-                    setEmployees(data);
-                } else {
-                    throw new Error('Failed to fetch employees');
-                }
+                setEmployees(res.data);
             } catch (error) {
                 console.error('Error fetching employees:', error);
             }
@@ -80,20 +129,14 @@ export default function UserManagementPage() {
 
         const fetchUsers = async () => {
             try {
-                const res = await fetch('https://localhost:8080/api/users', {
-                    credentials: 'include',
+                const res = await axiosInstance.get('/users', {
                     headers: {
                         "Authorization": `Bearer ${session.accessToken}`,
                         "Content-Type": "application/json",
                         "Cache-Control": "no-store",
                     },
                 });
-                if (res.ok) {
-                    const data = await res.json();
-                    setUsers(data);
-                } else {
-                    throw new Error('Failed to fetch users');
-                }
+                setUsers(res.data);
             } catch (error) {
                 console.error('Error fetching users:', error);
             }
@@ -101,67 +144,66 @@ export default function UserManagementPage() {
 
         fetchEmployees();
         fetchUsers();
-    }, [session?.accessToken]);
+    }, [session]);
+
+    const handleShowAddEmployeeForm = () => {
+        setShowAddEmployeeForm(!showAddEmployeeForm);
+    };
 
     const handleAddEmployee = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!session?.accessToken) return;
 
         try {
+            const { isValid, errors } = validateCredentials(newEmployee.username, newEmployee.password);
+            if (!isValid) {
+                alert(errors.join('\n'));
+                return;
+            }
+
+            const hashedPassword = await hashPassword(newEmployee.password);
             const newUser = {
                 username: newEmployee.username,
-                password: newEmployee.password,
+                password: hashedPassword,
                 role: newEmployee.role,
             };
 
-            const userRes = await fetch('https://localhost:8080/api/users', {
-                method: 'POST',
+            const userRes = await axiosInstance.post('/users', newUser, {
                 headers: { 
                     'Content-Type': 'application/json',
-                    "Authorization": `Bearer ${session.accessToken}`,
+                    "Authorization": `Bearer ${(session as any).accessToken}`,
                 },
-                body: JSON.stringify(newUser),
-                credentials: 'include',
             });
 
-            if (userRes.ok) {
-                const createdUser = await userRes.json();
-                const employeeToAdd = { ...newEmployee, userId: createdUser.id };
+            const createdUser = userRes.data;
+            const { username, password, role, ...employeeData } = newEmployee;
+            const employeeToAdd = { ...employeeData, userId: createdUser.id };
 
-                const res = await fetch('https://localhost:8080/api/employees', {
-                    method: 'POST',
-                    headers: { 
-                        'Content-Type': 'application/json',
-                        "Authorization": `Bearer ${session.accessToken}`,
-                        "Cache-Control": "no-store",
-                    },
-                    body: JSON.stringify(employeeToAdd),
-                    credentials: 'include',
-                });
+            const res = await axiosInstance.post('/employees', employeeToAdd, {
+                headers: { 
+                    'Content-Type': 'application/json',
+                    "Authorization": `Bearer ${(session as any).accessToken}`,
+                    "Cache-Control": "no-store",
+                },
+            });
 
-                if (res.ok) {
-                    const addedEmployee = await res.json();
-                    setEmployees((prevEmployees) => [...prevEmployees, addedEmployee]);
-                    setNewEmployee({
-                        firstName: "",
-                        lastName: "",
-                        email: "",
-                        phoneNumber: "",
-                        position: "",
-                        startDate: "",
-                        status: "Active",
-                        userId: 0,
-                        username: "",
-                        password: "",
-                        role: "Employee",
-                        salary: 0,
-                    });
-                } else {
-                    throw new Error('Failed to add employee');
-                }
-            } else {
-                throw new Error('Failed to create user');
-            }
+            const addedEmployee = res.data;
+            setEmployees((prevEmployees) => [...prevEmployees, addedEmployee]);
+            setUsers((prevUsers) => [...prevUsers, createdUser]);
+            setNewEmployee({
+                firstName: "",
+                lastName: "",
+                email: "",
+                phoneNumber: "",
+                position: "OfficeStaff",
+                startDate: "",
+                status: "Active",
+                userId: 0,
+                username: "",
+                password: "",
+                role: "EMPLOYEE",
+                salary: 0,
+            });
         } catch (error) {
             console.error('Error adding employee:', error);
             alert('Error adding employee, please try again');
@@ -171,92 +213,66 @@ export default function UserManagementPage() {
     const handleEditEmployee = async (e: React.FormEvent, employee: Employee) => {
         e.preventDefault();
         if (!session?.accessToken) return;
-
+    
         try {
-            const userToUpdate = users.find((user) => user.id === employee.userId);
-            if (userToUpdate) {
-                const updatedUser = {
-                    ...userToUpdate,
-                    username: userToUpdate.username,
-                    role: userToUpdate.role,
-                };
-
-                const userRes = await fetch(`https://localhost:8080/api/users/${userToUpdate.id}`, {
-                    method: 'PUT',
-                    headers: { 
-                        'Content-Type': 'application/json',
-                        "Authorization": `Bearer ${session.accessToken}`,
-                        "Cache-Control": "no-store",
-                    },
-                    body: JSON.stringify(updatedUser),
-                    credentials: 'include',
-                });
-
-                if (!userRes.ok) {
-                    throw new Error('Failed to update user');
-                }
-            }
-
             const updatedEmployeeData = {
                 ...employee,
                 startDate: new Date(employee.startDate).toISOString(),
             };
-
-            const res = await fetch(`https://localhost:8080/api/employees/${employee.id}`, {
-                method: 'PUT',
+    
+            const res = await axiosInstance.put(`/employees/${employee.id}`, updatedEmployeeData, {
                 headers: { 
                     'Content-Type': 'application/json',
-                    "Authorization": `Bearer ${session.accessToken}`,
+                    "Authorization": `Bearer ${(session as any).accessToken}`,
                     "Cache-Control": "no-store",
                 },
-                body: JSON.stringify(updatedEmployeeData),
-                credentials: 'include',
             });
+    
+            const updatedEmployee = res.data;
+            setEmployees((prevEmployees) =>
+                prevEmployees.map((emp) => (emp.id === updatedEmployee.id ? updatedEmployee : emp))
+            );
 
-            if (res.ok) {
-                const updatedEmployee = await res.json();
-                setEmployees((prevEmployees) =>
-                    prevEmployees.map((emp) => (emp.id === updatedEmployee.id ? updatedEmployee : emp))
-                );
-                setEditingEmployeeId(null);
-            } else {
-                throw new Error('Failed to update employee');
+            if (editingPassword.trim() !== "") {
+                const { isValid, errors } = validateCredentials(employee.email, editingPassword);
+                if (!isValid) {
+                    alert(errors.join('\n'));
+                    return;
+                }
+                const hashedPassword = await hashPassword(editingPassword);
+                await axiosInstance.put(`/users/${employee.userId}`, { password: hashedPassword }, {
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        "Authorization": `Bearer ${(session as any).accessToken}`,
+                    },
+                });
             }
+            setEditingEmployeeId(null);
+            setEditingPassword("");
         } catch (error) {
             console.error('Error updating employee:', error);
             alert('Error updating employee, please try again');
         }
     };
 
-    const handleDeleteEmployee = async (id: number) => {
+    const handleDeleteEmployee = async (id: String) => {
         if (!session?.accessToken) return;
 
         try {
-            const res = await fetch(`https://localhost:8080/api/employees/${id}`, {
-                method: 'DELETE',
-                credentials: 'include',
+            await axiosInstance.delete(`/employees/${id}`, {
                 headers: {
-                    "Authorization": `Bearer ${session.accessToken}`,
+                    "Authorization": `Bearer ${(session as any).accessToken}`,
                     "Content-Type": "application/json",
                     "Cache-Control": "no-store",
                 },
             });
-
-            if (res.ok) {
-                setEmployees(employees.filter(emp => emp.id !== id));
-            } else {
-                throw new Error('Failed to delete employee');
-            }
+            setEmployees(employees.filter(emp => emp.id !== id.toString()));
         } catch (error) {
             console.error('Error deleting employee:', error);
         }
     };
 
-    const handleEditClick = (id: number) => {
-        setEditingEmployeeId(editingEmployeeId === id ? null : id);
-    };
-
-    const handleDeleteClick = (id: number) => {
+    const handleDeleteClick = (id: string) => {
         handleDeleteEmployee(id);
     };
 
@@ -264,40 +280,122 @@ export default function UserManagementPage() {
         router.push('/admin');
     };
 
+    // Helper to convert a date string for input[type="date"] (yyyy-mm-dd)
+    const formatDateForInput = (dateStr: string) => {
+        const date = new Date(dateStr);
+        return isNaN(date.getTime()) ? "" : date.toISOString().split('T')[0];
+    };
+
+    // Compute filtered employees based on search, status and group (position) filter and sort alphabetically.
+    const filteredEmployees = employees
+        .filter(emp => {
+            const fullName = (emp.firstName + " " + emp.lastName).toLowerCase();
+            const searchLower = searchQuery.toLowerCase();
+            const matchesSearch =
+                fullName.includes(searchLower) || emp.email.toLowerCase().includes(searchLower);
+            const matchesStatus = statusFilter === 'all'
+                ? true
+                : emp.status.toLowerCase() === statusFilter;
+            const matchesGroup = groupFilter === 'all'
+                ? true
+                : emp.position === groupFilter;
+            return matchesSearch && matchesStatus && matchesGroup;
+        })
+        .sort((a, b) => {
+            const nameA = (a.firstName + " " + a.lastName).toLowerCase();
+            const nameB = (b.firstName + " " + b.lastName).toLowerCase();
+            return sortOrder === 'asc'
+                ? nameA.localeCompare(nameB)
+                : nameB.localeCompare(nameA);
+        });
+
     return (
-        <div className="flex flex-col items-left min-h-screen bg-gray-50 py-4">
-            <div className="flex justify-between items-center mb-6">
-                <h1 className="text-2xl font-bold">User Management</h1>
-                <button
-                    onClick={handleBackClick}
-                    className="bg-blue-500 text-white rounded px-4 py-2 hover:bg-blue-600"
-                >
-                    Back to Admin
-                </button>
+        <div className="min-h-screen bg-gray-50 py-2">
+            <div className="flex mx-full justify-between items-center mb-4 ">
+                <h1 className="text-2xl font-bold">Users</h1>
+                <div className="flex items-center space-x-1 text-sm">
+                    <span
+                        className="cursor-pointer text-blue-600 hover:underline"
+                        onClick={() => router.push('/dashboard')}
+                    >
+                        Dashboard
+                    </span>
+                    <span>{'>'}</span>
+                    <span
+                        className="cursor-pointer text-blue-600 hover:underline"
+                        onClick={() => router.push('/admin')}
+                    >
+                        Admin
+                    </span>
+                    <span>{'>'}</span>
+                    <span className="font-bold">Users</span>
+                </div>
             </div>
-            <div className="flex space-x-2 mb-4">
-                <button
-                    onClick={handleShowAddEmployeeForm}
-                    className="bg-green-500 text-white rounded px-4 py-2 hover:bg-green-600 w-52"
-                >
-                    {showAddEmployeeForm ? 'Cancel' : 'Add New Employee'}
-                </button>
-                <button
-                    onClick={toggleEmployeeFilter}
-                    className="bg-gray-500 text-white rounded px-4 py-2 hover:bg-gray-600 w-52"
-                >
-                    {showActiveEmployees ? 'Show Previous Employees' : 'Show Active Employees'}
-                </button>
+            <hr className="w-full border-t-2 border-gray-500 mb-4" />
+            <div className="flex flex-col gap-4 mb-4">
+                <div className="flex items-center gap-4">
+                    <div className="relative">
+                        <input
+                            type="text"
+                            placeholder="Search by name or email"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="w-full border pl-10 border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring focus:ring-indigo-300"
+                        />
+                        <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                            <Search className="text-gray-500" size={20} />
+                        </div>
+                    </div>
+                    <select
+                        value={statusFilter}
+                        onChange={(e) => setStatusFilter(e.target.value)}
+                        className="border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring focus:ring-indigo-300"
+                    >
+                        <option value="active">Active</option>
+                        <option value="all">All Statuses</option>
+                        <option value="onleave">On Leave</option>
+                        <option value="terminated">Terminated</option>
+                        <option value="suspended">Suspended</option>
+                    </select>
+                    <select
+                        value={groupFilter}
+                        onChange={(e) => setGroupFilter(e.target.value)}
+                        className="border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring focus:ring-indigo-300"
+                    >
+                        <option value="all">All Groups</option>
+                        {["ProjectManager", "FieldManager", "FieldTechnicianL1", "FieldTechnicianL2", "FieldTechnicianL3", "OfficeStaff", "Owner"].map(pos => (
+                            <option key={pos} value={pos}>
+                                {formatPosition(pos)}
+                            </option>
+                        ))}
+                    </select>
+                    <select
+                        value={sortOrder}
+                        onChange={(e) => setSortOrder(e.target.value as 'asc' | 'desc')}
+                        className="border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring focus:ring-indigo-300"
+                    >
+                        <option value="asc">A - Z</option>
+                        <option value="desc">Z - A</option>
+                    </select>
+                </div>
+                <div>
+                    <button
+                        onClick={handleShowAddEmployeeForm}
+                        className="bg-[#414A9E] text-white rounded px-4 py-2 hover:bg-[#29ABE2]"
+                    >
+                        {showAddEmployeeForm ? 'Cancel' : 'Add New User'}
+                    </button>
+                </div>
             </div>
             {showAddEmployeeForm && (
                 <div className="mx-full">
-                    <h2 className="text-xl font-semibold mb-2 py-4">Add New Employee</h2>
+                    <h2 className="text-xl font-semibold mb-2 py-4">Add New User</h2>
                     <form
                         onSubmit={handleAddEmployee}
                         className="bg-white p-8 rounded shadow w-full space-y-4"
                     >
                         <div className="space-y-2">
-                            <label className="block text-sm font-medium text-gray-700">First Name</label>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">First Name</label>
                             <input
                                 type="text"
                                 placeholder="First Name"
@@ -307,7 +405,7 @@ export default function UserManagementPage() {
                             />
                         </div>
                         <div className="space-y-2">
-                            <label className="block text-sm font-medium text-gray-700">Last Name</label>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
                             <input
                                 type="text"
                                 placeholder="Last Name"
@@ -317,7 +415,7 @@ export default function UserManagementPage() {
                             />
                         </div>
                         <div className="space-y-2">
-                            <label className="block text-sm font-medium text-gray-700">Email</label>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
                             <input
                                 type="email"
                                 placeholder="Email"
@@ -327,27 +425,33 @@ export default function UserManagementPage() {
                             />
                         </div>
                         <div className="space-y-2">
-                            <label className="block text-sm font-medium text-gray-700">Phone Number</label>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
                             <input
                                 type="tel"
                                 placeholder="Phone Number"
                                 value={newEmployee.phoneNumber}
-                                onChange={(e) => setNewEmployee({ ...newEmployee, phoneNumber: e.target.value })}
+                                onChange={(e) =>
+                                    setNewEmployee({ ...newEmployee, phoneNumber: formatPhoneNumber(e.target.value) })
+                                }
                                 className="border border-gray-300 rounded w-full px-3 py-2 focus:outline-none focus:ring focus:ring-indigo-300"
                             />
                         </div>
                         <div className="space-y-2">
-                            <label className="block text-sm font-medium text-gray-700">Position</label>
-                            <input
-                                type="text"
-                                placeholder="Position"
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Position</label>
+                            <select
                                 value={newEmployee.position}
                                 onChange={(e) => setNewEmployee({ ...newEmployee, position: e.target.value })}
                                 className="border border-gray-300 rounded w-full px-3 py-2 focus:outline-none focus:ring focus:ring-indigo-300"
-                            />
+                            >
+                                {["ProjectManager", "FieldManager", "FieldTechnicianL1", "FieldTechnicianL2", "FieldTechnicianL3", "OfficeStaff", "Owner"].map(pos => (
+                                    <option key={pos} value={pos}>
+                                        {formatPosition(pos)}
+                                    </option>
+                                ))}
+                            </select>
                         </div>
                         <div className="space-y-2">
-                            <label className="block text-sm font-medium text-gray-700">Start Date</label>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
                             <input
                                 type="date"
                                 placeholder="Start Date"
@@ -357,7 +461,7 @@ export default function UserManagementPage() {
                             />
                         </div>
                         <div className="space-y-2">
-                            <label className="block text-sm font-medium text-gray-700">Status</label>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
                             <select
                                 value={newEmployee.status}
                                 onChange={(e) => setNewEmployee({ ...newEmployee, status: e.target.value })}
@@ -370,17 +474,20 @@ export default function UserManagementPage() {
                             </select>
                         </div>
                         <div className="space-y-2">
-                            <label className="block text-sm font-medium text-gray-700">Salary</label>
-                            <input
-                                type="number"
-                                placeholder="Salary"
-                                value={newEmployee.salary}
-                                onChange={(e) => setNewEmployee({ ...newEmployee, salary: parseFloat(e.target.value) })}
-                                className="border border-gray-300 rounded w-full px-3 py-2 focus:outline-none focus:ring focus:ring-indigo-300"
-                            />
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Salary</label>
+                            <div className="relative">
+                                <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">$</span>
+                                <input
+                                    type="number"
+                                    placeholder="Salary"
+                                    value={newEmployee.salary}
+                                    onChange={(e) => setNewEmployee({ ...newEmployee, salary: parseFloat(e.target.value) })}
+                                    className="border border-gray-300 rounded w-full px-3 py-2 pl-8 focus:outline-none focus:ring focus:ring-indigo-300"
+                                />
+                            </div>
                         </div>
                         <div className="space-y-2">
-                            <label className="block text-sm font-medium text-gray-700">Username</label>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>
                             <input
                                 type="text"
                                 placeholder="Username"
@@ -390,26 +497,33 @@ export default function UserManagementPage() {
                             />
                         </div>
                         <div className="space-y-2">
-                            <label className="block text-sm font-medium text-gray-700">Password</label>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
                             <input
                                 type="password"
                                 placeholder="Password"
                                 value={newEmployee.password}
-                                onChange={(e) => setNewEmployee({ ...newEmployee, password: e.target.value })}
+                                onChange={(e) => {
+                                    const newPassword = e.target.value;
+                                    setNewEmployee({ ...newEmployee, password: newPassword });
+                                    const { isValid, errors } = validateCredentials(newEmployee.username, newPassword);
+                                    if (!isValid) console.log(errors.join('\n'));
+                                }}
                                 className="border border-gray-300 rounded w-full px-3 py-2 focus:outline-none focus:ring focus:ring-indigo-300"
                             />
                         </div>
+                        <p className="text-sm text-gray-500">
+                            Password must be at least 8 chars, with at least one uppercase, one digit, and one special character.
+                        </p>
                         <div className="space-y-2">
-                            <label className="block text-sm font-medium text-gray-700">Role</label>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
                             <select
                                 value={newEmployee.role}
                                 onChange={(e) => setNewEmployee({ ...newEmployee, role: e.target.value })}
                                 className="border border-gray-300 rounded w-full px-3 py-2 focus:outline-none focus:ring focus:ring-indigo-300"
                             >
-                                <option value="Employee">Employee</option>
-                                <option value="Manager">Manager</option>
-                                <option value="ProjectManager">ProjectManager</option>
-                                <option value="Office">Office</option>
+                                <option value="ADMIN">ADMIN</option>
+                                <option value="MANAGER">MANAGER</option>
+                                <option value="EMPLOYEE">EMPLOYEE</option>
                             </select>
                         </div>
                         <button
@@ -421,132 +535,282 @@ export default function UserManagementPage() {
                     </form>
                 </div>
             )}
+
             <div className="w-full">
-                <h2 className="text-xl font-semibold mb-4">{showActiveEmployees ? 'Active Employees' : 'Non-Active Employees'}</h2>
-                <table className="min-w-full bg-white" id="employeeList">
-                    <thead>
-                        <tr>
-                            <th className="py-2 px-4 border-b text-left">Name</th>
-                            <th className="py-2 px-4 border-b text-left">Email</th>
-                            <th className="py-2 px-4 border-b text-left">Position</th>
-                            <th className="py-2 px-4 border-b text-left">User</th>
-                            <th className="py-2 px-4 border-b text-left">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {employees.filter(emp => showActiveEmployees ? emp.status === 'Active' : emp.status !== 'Active').map((employee) => (
-                            <React.Fragment key={employee.id}>
-                                <tr>
-                                    <td className="py-2 px-4 border-b">{employee.firstName} {employee.lastName}</td>
-                                    <td className="py-2 px-4 border-b">{employee.email}</td>
-                                    <td className="py-2 px-4 border-b">{employee.position}</td>
-                                    <td className="py-2 px-4 border-b">{users.find(user => user.id === employee.userId)?.username}</td>
-                                    <td className="py-2 px-4 border-b">
-                                        <button
-                                            data-id={employee.id}
-                                            className="edit-btn bg-yellow-500 text-white rounded px-4 py-2 hover:bg-yellow-600 mr-2"
-                                            onClick={() => handleEditClick(employee.id)}
+                <div className="min-w-full bg-gray-50 text-[#29ABE3]" id="employeeList">
+                    <div className="group flex justify-between border-b">
+                        <div className="px-2 py-2 font-semibold flex-1 text-left">Name</div>
+                        <div className="px-2 py-2 font-semibold flex-1 text-left">Group</div>
+                        <div className="px-2 py-2 font-semibold flex-1 text-left">Email</div>
+                        <div className="px-2 py-2 font-semibold flex-1 text-left">User</div>
+                        <div className="px-2 py-2 font-semibold w-8"></div>
+                    </div>
+                </div>
+                <Accordion type="single" collapsible className="w-full">
+                    {filteredEmployees.map((employee, index) => (
+                        <AccordionItem key={employee.id} value={employee.id}>
+                            <AccordionTrigger
+                                className={`group flex justify-between items-center py-4 px-4 border-b ${
+                                    index % 2 === 0 ? "bg-white" : "bg-gray-100"
+                                } hover:bg-gray-100`}
+                            >
+                                <div className="flex flex-col sm:flex-row sm:space-x-4 w-full">
+                                    <span className="truncate w-1/4">
+                                        {employee.firstName} {employee.lastName}
+                                    </span>
+                                    <span className="truncate w-1/4 ml-2">
+                                        {formatPosition(employee.position)}
+                                    </span>
+                                    <span className="truncate w-1/4">{employee.email}</span>
+                                    <span className="truncate w-1/4 ml-2">
+                                        {users.find((user) => user.id === employee.userId.toString())?.username}
+                                    </span>
+                                </div>
+                            </AccordionTrigger>
+                            <AccordionContent>
+                                <div className="border-b">
+                                    <div className="p-6 bg-gray-100">
+                                        <form
+                                            onSubmit={(e) => handleEditEmployee(e, employee)}
+                                            className="space-y-4"
                                         >
-                                            Edit
-                                        </button>
-                                        <button
-                                            data-id={employee.id}
-                                            className="delete-btn bg-red-500 text-white rounded px-4 py-2 hover:bg-red-600"
-                                            onClick={() => handleDeleteClick(employee.id)}
-                                        >
-                                            Delete
-                                        </button>
-                                    </td>
-                                </tr>
-                                {editingEmployeeId === employee.id && (
-                                    <tr>
-                                        <td colSpan={5} className="py-2 px-2 border-b">
-                                            <form
-                                                onSubmit={(e) => handleEditEmployee(e, employee)}
-                                                className="bg-white p-8 rounded shadow w-full space-y-4"
-                                            >
-                                                <label>First Name</label>
-                                                <input
-                                                    type="text"
-                                                    placeholder="First Name"
-                                                    value={employee.firstName}
-                                                    onChange={(e) => setEmployees(employees.map(emp => emp.id === employee.id ? { ...emp, firstName: e.target.value } : emp))}
-                                                    className="border border-gray-300 rounded w-full px-3 py-2 focus:outline-none focus:ring focus:ring-indigo-300"
-                                                />
-                                                <label>Last Name</label>
-                                                <input
-                                                    type="text"
-                                                    placeholder="Last Name"
-                                                    value={employee.lastName}
-                                                    onChange={(e) => setEmployees(employees.map(emp => emp.id === employee.id ? { ...emp, lastName: e.target.value } : emp))}
-                                                    className="border border-gray-300 rounded w-full px-3 py-2 focus:outline-none focus:ring focus:ring-indigo-300"
-                                                />
-                                                <label>Email</label>
+                                            <div className="flex flex-wrap gap-4">
+                                                <div className="flex-1">
+                                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                        First Name
+                                                    </label>
+                                                    <input
+                                                        type="text"
+                                                        value={employee.firstName}
+                                                        onChange={(e) =>
+                                                            setEmployees(
+                                                                employees.map((emp) =>
+                                                                    emp.id === employee.id
+                                                                        ? { ...emp, firstName: e.target.value }
+                                                                        : emp
+                                                                )
+                                                            )
+                                                        }
+                                                        className="border border-gray-300 rounded w-full px-3 py-2 focus:outline-none focus:ring focus:ring-indigo-300"
+                                                    />
+                                                </div>
+                                                <div className="flex-1">
+                                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                        Last Name
+                                                    </label>
+                                                    <input
+                                                        type="text"
+                                                        value={employee.lastName}
+                                                        onChange={(e) =>
+                                                            setEmployees(
+                                                                employees.map((emp) =>
+                                                                    emp.id === employee.id
+                                                                        ? { ...emp, lastName: e.target.value }
+                                                                        : emp
+                                                                )
+                                                            )
+                                                        }
+                                                        className="border border-gray-300 rounded w-full px-3 py-2 focus:outline-none focus:ring focus:ring-indigo-300"
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                    Email
+                                                </label>
                                                 <input
                                                     type="email"
-                                                    placeholder="Email"
                                                     value={employee.email}
-                                                    onChange={(e) => setEmployees(employees.map(emp => emp.id === employee.id ? { ...emp, email: e.target.value } : emp))}
+                                                    onChange={(e) =>
+                                                        setEmployees(
+                                                            employees.map((emp) =>
+                                                                emp.id === employee.id
+                                                                    ? { ...emp, email: e.target.value }
+                                                                    : emp
+                                                            )
+                                                        )
+                                                    }
                                                     className="border border-gray-300 rounded w-full px-3 py-2 focus:outline-none focus:ring focus:ring-indigo-300"
                                                 />
-                                                <label>Phone Number</label>
-                                                <input
-                                                    type="tel"
-                                                    placeholder="Phone Number"
-                                                    value={employee.phoneNumber}
-                                                    onChange={(e) => setEmployees(employees.map(emp => emp.id === employee.id ? { ...emp, phoneNumber: e.target.value } : emp))}
-                                                    className="border border-gray-300 rounded w-full px-3 py-2 focus:outline-none focus:ring focus:ring-indigo-300"
-                                                />
-                                                <label>Position</label>
-                                                <input
-                                                    type="text"
-                                                    placeholder="Position"
-                                                    value={employee.position}
-                                                    onChange={(e) => setEmployees(employees.map(emp => emp.id === employee.id ? { ...emp, position: e.target.value } : emp))}
-                                                    className="border border-gray-300 rounded w-full px-3 py-2 focus:outline-none focus:ring focus:ring-indigo-300"
-                                                />
-                                                <label>Start Date</label>
-                                                <input
-                                                    type="date"
-                                                    placeholder="Start Date"
-                                                    value={employee.startDate}
-                                                    onChange={(e) => setEmployees(employees.map(emp => emp.id === employee.id ? { ...emp, startDate: e.target.value } : emp))}
-                                                    className="border border-gray-300 rounded w-full px-3 py-2 focus:outline-none focus:ring focus:ring-indigo-300"
-                                                />
-                                                <label>Status</label>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                    Position
+                                                </label>
                                                 <select
-                                                    value={employee.status}
-                                                    onChange={(e) => setEmployees(employees.map(emp => emp.id === employee.id ? { ...emp, status: e.target.value } : emp))}
+                                                    value={employee.position}
+                                                    onChange={(e) =>
+                                                        setEmployees(
+                                                            employees.map((emp) =>
+                                                                emp.id === employee.id
+                                                                    ? { ...emp, position: e.target.value }
+                                                                    : emp
+                                                            )
+                                                        )
+                                                    }
                                                     className="border border-gray-300 rounded w-full px-3 py-2 focus:outline-none focus:ring focus:ring-indigo-300"
                                                 >
-                                                    <option value="Active">Active</option>
-                                                    <option value="OnLeave">On Leave</option>
-                                                    <option value="Terminated">Terminated</option>
-                                                    <option value="Suspended">Suspended</option>
+                                                    {[
+                                                        "ProjectManager",
+                                                        "FieldManager",
+                                                        "FieldTechnicianL1",
+                                                        "FieldTechnicianL2",
+                                                        "FieldTechnicianL3",
+                                                        "OfficeStaff",
+                                                        "Owner",
+                                                    ].map((pos) => (
+                                                        <option key={pos} value={pos}>
+                                                            {formatPosition(pos)}
+                                                        </option>
+                                                    ))}
                                                 </select>
-                                                <label>Salary</label>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                    Phone Number
+                                                </label>
                                                 <input
-                                                    type="number"
-                                                    placeholder="Salary"
-                                                    value={employee.salary}
-                                                    onChange={(e) => setEmployees(employees.map(emp => emp.id === employee.id ? { ...emp, salary: parseFloat(e.target.value) } : emp))}
+                                                    type="tel"
+                                                    value={employee.phoneNumber}
+                                                    onChange={(e) =>
+                                                        setEmployees(
+                                                            employees.map((emp) =>
+                                                                emp.id === employee.id
+                                                                    ? { ...emp, phoneNumber: formatPhoneNumber(e.target.value) }
+                                                                    : emp
+                                                            )
+                                                        )
+                                                    }
                                                     className="border border-gray-300 rounded w-full px-3 py-2 focus:outline-none focus:ring focus:ring-indigo-300"
                                                 />
+                                            </div>
+                                            <div className="flex flex-wrap gap-4">
+                                                <div className="flex-1">
+                                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                        Start Date
+                                                    </label>
+                                                    <input
+                                                        type="date"
+                                                        value={formatDateForInput(employee.startDate)}
+                                                        onChange={(e) =>
+                                                            setEmployees(
+                                                                employees.map((emp) =>
+                                                                    emp.id === employee.id
+                                                                        ? { ...emp, startDate: e.target.value }
+                                                                        : emp
+                                                                )
+                                                            )
+                                                        }
+                                                        className="border border-gray-300 rounded w-full px-3 py-2 focus:outline-none focus:ring focus:ring-indigo-300"
+                                                    />
+                                                </div>
+                                                <div className="flex-1">
+                                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                        Status
+                                                    </label>
+                                                    <select
+                                                        value={employee.status}
+                                                        onChange={(e) =>
+                                                            setEmployees(
+                                                                employees.map((emp) =>
+                                                                    emp.id === employee.id
+                                                                        ? { ...emp, status: e.target.value }
+                                                                        : emp
+                                                                )
+                                                            )
+                                                        }
+                                                        className="border border-gray-300 rounded w-full px-3 py-2 focus:outline-none focus:ring focus:ring-indigo-300"
+                                                    >
+                                                        <option value="Active">Active</option>
+                                                        <option value="OnLeave">On Leave</option>
+                                                        <option value="Terminated">Terminated</option>
+                                                        <option value="Suspended">Suspended</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                    Salary
+                                                </label>
+                                                <div className="relative">
+                                                    <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">
+                                                        $
+                                                    </span>
+                                                    <input
+                                                        type="number"
+                                                        value={employee.salary}
+                                                        onChange={(e) =>
+                                                            setEmployees(
+                                                                employees.map((emp) =>
+                                                                    emp.id === employee.id
+                                                                        ? { ...emp, salary: parseFloat(e.target.value) }
+                                                                        : emp
+                                                                )
+                                                            )
+                                                        }
+                                                        className="border border-gray-300 rounded w-full px-3 py-2 pl-8 focus:outline-none focus:ring focus:ring-indigo-300"
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                    New Password
+                                                </label>
+                                                <input
+                                                    type="password"
+                                                    value={editingPassword}
+                                                    onChange={(e) => setEditingPassword(e.target.value)}
+                                                    className="border border-gray-300 rounded w-full px-3 py-2 focus:outline-none focus:ring focus:ring-indigo-300"
+                                                />
+                                            </div>
+                                            <div className="flex space-x-2">
                                                 <button
                                                     type="submit"
-                                                    className="bg-indigo-600 text-white rounded px-4 py-2 hover:bg-indigo-700"
+                                                    className="bg-[#29ABE3] text-white rounded px-4 py-2 hover:bg-[#1C8FA6]"
                                                 >
                                                     Update Employee
                                                 </button>
-                                            </form>
-                                        </td>
-                                    </tr>
-                                )}
-                            </React.Fragment>
-                        ))}
-                    </tbody>
-                </table>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleDeleteClick(employee.id)}
+                                                    className="bg-[#FF9F1C] text-white rounded px-4 py-2 hover:bg-[#FFA726]"
+                                                >
+                                                    Make Inactive
+                                                </button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </AccordionContent>
+                        </AccordionItem>
+                    ))}
+                </Accordion>
             </div>
+            {filteredEmployees.length > visibleUserCount && (
+                <div className="w-full mt-8 flex justify-center items-center space-x-4">
+                    <button
+                        onClick={() =>
+                            setCurrentPage((prev: number) => Math.max(prev - 1, 1))
+                        }
+                        disabled={currentPage === 1}
+                        className="px-4 py-2 bg-indigo-600 text-white rounded disabled:opacity-50"
+                    >
+                        Previous
+                    </button>
+                    <span>
+                        Page {currentPage} of {Math.ceil(filteredEmployees.length / visibleUserCount)}
+                    </span>
+                    <button
+                        onClick={() =>
+                            setCurrentPage((prev: number) => prev + 1)
+                        }
+                        disabled={currentPage === Math.ceil(filteredEmployees.length / visibleUserCount)}
+                        className="px-4 py-2 bg-indigo-600 text-white rounded disabled:opacity-50"
+                    >
+                        Next
+                    </button>
+                </div>
+            )}
         </div>
     );
 }

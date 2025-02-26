@@ -10,7 +10,6 @@ const hashPasswords = async () => {
       if (!user.password.startsWith('$2b$')) { // Check if it's already hashed
         const hashedPassword = await bcrypt.hash(user.password, 10);
 
-        // Update the user with the hashed password
         await prisma.user.update({
           where: { id: user.id },
           data: { password: hashedPassword }

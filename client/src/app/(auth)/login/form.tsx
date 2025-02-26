@@ -2,12 +2,11 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { signIn, useSession } from "next-auth/react";
+import { signIn } from "next-auth/react";
 import Image from "next/image";
-import Logo from "@/assets/logo2.png";
+import Logo from "@/src/assets/logo2.png";
 
 const LoginForm = () => {
-    const { data: session } = useSession();
     const router = useRouter();
     const [formData, setFormData] = useState({ username: "", password: "" });
     const [error, setError] = useState("");
@@ -30,7 +29,7 @@ const LoginForm = () => {
             redirect: false,
             username: formData.username,
             password: formData.password,
-            csrfToken: await fetchCsrfToken(), // Fetch CSRF token
+            csrfToken: await fetchCsrfToken(), 
         });
 
         console.log("Sign In Result:", result);
@@ -112,7 +111,6 @@ const LoginForm = () => {
                         </div>
                     </div>
 
-                    {/* Submit Button */}
                     <div className="flex justify-center">
                         <button
                             type="submit"
