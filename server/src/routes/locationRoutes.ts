@@ -41,7 +41,13 @@ router.get("/locations", async (_req: Request, res: Response) => {
                 id: loc.id.toString(),
                 name: loc.name,
                 companies: uniqueCompanies,
-                address: `${loc.street1}${loc.street2 ? " " + loc.street2 : ""}, ${loc.city}, ${loc.state} ${loc.zipCode}`,
+                address: {
+                    line1: loc.street1,
+                    line2: loc.street2,
+                    city: loc.city,
+                    state: loc.state,
+                    zip: loc.zipCode,
+                },
                 divisions: uniqueDivisions,
             };
         });

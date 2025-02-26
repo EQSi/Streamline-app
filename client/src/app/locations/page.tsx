@@ -14,9 +14,10 @@ import {
 
 interface Location {
     id: string;
+    name: string;
     address: {
         line1: string;
-        line2: string;
+        line2?: string;
         city: string;
         state: string;
         zip: string;
@@ -106,12 +107,12 @@ export default function LocationsPage() {
 
     // Fetch divisions based on selected company
     useEffect(() => {
-        if (selectedCompany) {
+        if (selectedCompany && session && (session as any).accessToken) {
             const fetchDivisions = async () => {
                 try {
                     const res = await axiosInstance.get(`/companies/${selectedCompany}/divisions`, {
                         headers: {
-                            "Authorization": `Bearer ${session.accessToken}`,
+                            "Authorization": `Bearer ${(session as any).accessToken}`,
                             "Content-Type": "application/json",
                         },
                     });
@@ -140,6 +141,10 @@ export default function LocationsPage() {
     const handleAddLocation = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
+            if (!session || !(session as any).accessToken) {
+                console.error("No session or access token found");
+                return;
+            }
             const res = await axiosInstance.post('/locations', {
                 name: newLocation.name,
                 address: {
@@ -153,7 +158,7 @@ export default function LocationsPage() {
                 divisions: newLocation.divisions.split(',').map(division => division.trim()),
             }, {
                 headers: {
-                    "Authorization": `Bearer ${session.accessToken}`,
+                    "Authorization": `Bearer ${(session as any).accessToken}`,
                     "Content-Type": "application/json",
                 },
             });
@@ -308,24 +313,22 @@ export default function LocationsPage() {
                         .slice((currentPage - 1) * visibleCount, currentPage * visibleCount)
                         .map((location, index) => (
                             <AccordionItem key={location.id} value={location.id}>
-                                <AccordionTrigger
-                                    className={`group flex justify-between items-center py-4 px-4 border-b ${
-                                        index % 2 === 0 ? "bg-white" : "bg-gray-100"
-                                    } hover:bg-gray-100`}
-                                >
-                                    <div className="flex flex-col sm:flex-row sm:space-x-4 w-full">
-                                        <span className="truncate w-1/3">{location.name}</span>
-                                        <span className="truncate w-1/3">{location.address}</span>
-                                        <span className="truncate w-1/3">{location.companies.join(', ')}</span>
-                                    </div>
-                                </AccordionTrigger>
+                            <AccordionTrigger
+                                className={`group flex justify-between items-center py-4 px-4 border-b ${
+                                    index % 2 === 0 ? "bg-white" : "bg-gray-100"
+                                } hover:bg-gray-100`}
+                            >
+                                <div className="flex flex-col sm:flex-row sm:space-x-4 w-full">
+                                    <span className="truncate w-1/3">{location.name}</span>
+                                    <span className="truncate w-1/3">{`${location.address?.line1 ?? ''}, ${location.address?.city ?? ''}, ${location.address?.state ?? ''} ${location.address?.zip ?? ''}`}</span>
+                                    <span className="truncate w-1/3">{location.companies?.join(', ') ?? ''}</span>
+                                </div>
+                            </AccordionTrigger>
                                 <AccordionContent>
-                                    <div className="p-6 bg-gray-100">
-                                        <p><span className="font-semibold">Name: </span>{location.name}</p>
-                                       <p><span className="font-semibold">Address: </span>{location.address}</p>
-                                        <p><span className="font-semibold">Companies: </span>{location.companies.join(', ')}</p>
-                                        <p><span className="font-semibold">Divisions: </span>{location.divisions.join(', ')}</p>
-                                    </div>
+                                    <p><span className="font-semibold">Name: </span>{location.name}</p>
+                                    <p><span className="font-semibold">Address: </span>{`${location.address?.line1 ?? ''}, ${location.address?.city ?? ''}, ${location.address?.state ?? ''} ${location.address?.zip ?? ''}`}</p>
+                                    <p><span className="font-semibold">Companies: </span>{location.companies.join(', ')}</p>
+                                    <p><span className="font-semibold">Divisions: </span>{location.divisions.join(', ')}</p>
                                 </AccordionContent>
                             </AccordionItem>
                         ))}
