@@ -33,6 +33,10 @@ app.use(cors({
 // Middleware for parsing JSON requests
 app.use(express.json());
 
+app.get("/", (req, res) => {
+  res.send("This is home route");
+});
+
 // Routes that don't require authentication
 app.use('/api/auth', authRoutes);
 
