@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
-import axios from 'axios';
+import axiosInstance from '@/src/state/axios';
 import { useAbility } from '@/src/context/abilityContext'; // Adjust the import path as needed
 
 interface Permission {
@@ -50,8 +50,8 @@ export default function PermissionManagementPage() {
             if (!session || !session.user || !session.accessToken) return;
             const userId = (session.user as any).id;
     
-                try {
-                    const userResponse = await axios.get(`https://localhost:8080/api/users/${userId}`, {
+            try {
+                const userResponse = await axiosInstance.get(`/users/${userId}`, {
                     headers: {
                         Authorization: `Bearer ${session.accessToken}`,
                     },
@@ -61,29 +61,19 @@ export default function PermissionManagementPage() {
                 setUserRole(fetchedUserRole.name);
 
                 const [rolesRes, permissionsRes] = await Promise.all([
-                    axios.get('https://localhost:8080/api/roles', {
+                    axiosInstance.get('/roles', {
                         headers: { "Authorization": `Bearer ${session.accessToken}` }
                     }),
-                    axios.get('https://localhost:8080/api/permissions', {
+                    axiosInstance.get('/permissions', {
                         headers: { "Authorization": `Bearer ${session.accessToken}` }
                     })
                 ]);
 
                 const rolesData = await Promise.all(rolesRes.data.map(async (role: Role) => {
-                    try {
-                        const permissionGroupRes = await axios.get(`https://localhost:8080/api/roles/${role.id}/permission-group`, {
-                            headers: { "Authorization": `Bearer ${session.accessToken}` }
-                        });
-                        return { ...role, permissionGroup: { ...permissionGroupRes.data, name: permissionGroupRes.data.name || '' } };
-                    } catch (error) {
-                        if (axios.isAxiosError(error) && error.response?.status === 404) {
-                            console.warn(`Permission group not found for role ${role.id}`);
-                            return { ...role, permissionGroup: null };
-                        } else {
-                            console.error(`Error fetching permission group for role ${role.id}:`, error);
-                            return { ...role, permissionGroup: null };
-                        }
-                    }
+                    const permissionGroupRes = await axiosInstance.get(`/roles/${role.id}/permission-group`, {
+                        headers: { "Authorization": `Bearer ${session.accessToken}` }
+                    });
+                    return { ...role, permissionGroup: { ...permissionGroupRes.data, name: permissionGroupRes.data.name || '' } };
                 }));
 
                 setRoles(rolesData);
@@ -113,7 +103,7 @@ export default function PermissionManagementPage() {
               ];
         
         try {
-            await axios.post(`https://localhost:8080/api/permission-groups/${selectedRole.permissionGroup.id}/permissions`, {
+            await axiosInstance.post(`/permission-groups/${selectedRole.permissionGroup.id}/permissions`, {
                 permissionIds: updatedPermissions.map(p => p.permissionId),
             }, {
                 headers: { "Authorization": `Bearer ${session.accessToken}` }

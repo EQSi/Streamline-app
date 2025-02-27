@@ -2,7 +2,7 @@ import axios from 'axios';
 import { signOut } from 'next-auth/react';
 
 const axiosInstance = axios.create({
-  baseURL: 'https://localhost:8080/api',
+  baseURL: `${process.env.NEXT_PUBLIC_API_URL}/api`,
   withCredentials: true,
 });
 

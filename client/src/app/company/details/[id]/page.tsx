@@ -1,6 +1,6 @@
 'use client';
 import React, { useState, useEffect, FormEvent } from 'react';
-import axios from 'axios';
+import axiosInstance from '@/src/state/axios';
 import { useParams, useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { Edit2, MapPin, Plus } from 'lucide-react';
@@ -133,7 +133,7 @@ const CompanyDetailsPage: React.FC = () => {
                         Authorization: `Bearer ${(session as any).accessToken}`,
                     },
                 };
-                const response = await axios.get(`https://localhost:8080/api/companies/${companyId}`, config);
+                const response = await axiosInstance.get(`/companies/${companyId}`, config);
                 setCompany(response.data);
                 if (response.data.divisions && response.data.divisions.length > 0) {
                     setSelectedDivision(response.data.divisions[0]);
@@ -159,13 +159,13 @@ const CompanyDetailsPage: React.FC = () => {
             };
             try {
                 if (company.hasDivisions && selectedDivision && selectedDivision.id) {
-                    const locationsRes = await axios.get(`https://localhost:8080/api/divisions/${selectedDivision.id}/locations`, config);
+                    const locationsRes = await axiosInstance.get(`/divisions/${selectedDivision.id}/locations`, config);
                     setDisplayLocations(locationsRes.data);
                 } else {
                     const [locationsRes, contractsRes, contactsRes] = await Promise.all([
-                        axios.get(`https://localhost:8080/api/companies/${company.id}/locations`, config),
-                        axios.get(`https://localhost:8080/api/companies/${company.id}/contracts`, config),
-                        axios.get(`https://localhost:8080/api/companies/${company.id}/contacts`, config),
+                        axiosInstance.get(`/companies/${company.id}/locations`, config),
+                        axiosInstance.get(`/companies/${company.id}/contracts`, config),
+                        axiosInstance.get(`/companies/${company.id}/contacts`, config),
                     ]);
                     setDisplayLocations(locationsRes.data);
                     setContracts(contractsRes.data);
@@ -189,7 +189,7 @@ const CompanyDetailsPage: React.FC = () => {
                 },
             };
             try {
-                const response = await axios.get(`https://localhost:8080/api/locations-now`, config);
+                const response = await axiosInstance.get(`/locations-now`, config);
                 setAllLocations(response.data);
             } catch (error) {
                 console.error('Failed to fetch all locations:', error);
@@ -219,8 +219,8 @@ const CompanyDetailsPage: React.FC = () => {
                     Authorization: `Bearer ${(session as any).accessToken}`,
                 },
             };
-            const response = await axios.put(
-                `https://localhost:8080/api/companies/${company.id}`,
+            const response = await axiosInstance.put(
+                `/companies/${company.id}`,
                 {
                     name: editName,
                     type: editType,
@@ -272,14 +272,14 @@ const CompanyDetailsPage: React.FC = () => {
             if (!isNewLocation && editingLocation.id) {
                 // For existing locations, simply assign the location to the company or division.
                 if (selectedDivision && selectedDivision.id) {
-                    locationResponse = await axios.post(
-                        `https://localhost:8080/api/companies/${companyId}/divisions/${selectedDivision.id}/assign-location`,
+                    locationResponse = await axiosInstance.post(
+                        `/companies/${companyId}/divisions/${selectedDivision.id}/assign-location`,
                         { locationId: Number(editingLocation.id) },
                         config
                     );
                 } else {
-                    locationResponse = await axios.post(
-                        `https://localhost:8080/api/companies/${companyId}/assign-location`,
+                    locationResponse = await axiosInstance.post(
+                        `/companies/${companyId}/assign-location`,
                         { locationId: Number(editingLocation.id) },
                         config
                     );
@@ -287,8 +287,8 @@ const CompanyDetailsPage: React.FC = () => {
             } else {
                 // First, create a new location in the locations table.
                 const { id, ...locationData } = editingLocation;
-                const newLocationRes = await axios.post(
-                    `https://localhost:8080/api/locations`,
+                const newLocationRes = await axiosInstance.post(
+                    `/locations`,
                     locationData,
                     config
                 );
@@ -296,14 +296,14 @@ const CompanyDetailsPage: React.FC = () => {
                 const newLocation = { ...locationData, id: newLocationRes.data.id };
                 // Then assign the new location to the company or division in the join table.
                 if (selectedDivision && selectedDivision.id) {
-                    await axios.post(
-                        `https://localhost:8080/api/companies/${companyId}/divisions/${selectedDivision.id}/assign-location`,
+                    await axiosInstance.post(
+                        `/companies/${companyId}/divisions/${selectedDivision.id}/assign-location`,
                         { locationId: Number(newLocation.id) },
                         config
                     );
                 } else {
-                    await axios.post(
-                        `https://localhost:8080/api/companies/${companyId}/assign-location`,
+                    await axiosInstance.post(
+                        `/companies/${companyId}/assign-location`,
                         { locationId: Number(newLocation.id) },
                         config
                     );
@@ -773,8 +773,8 @@ const CompanyDetailsPage: React.FC = () => {
                                             Authorization: `Bearer ${(session as any).accessToken}`,
                                         },
                                     };
-                                    const response = await axios.post(
-                                        `https://localhost:8080/api/companies/${companyId}/divisions`,
+                                    const response = await axiosInstance.post(
+                                        `/companies/${companyId}/divisions`,
                                         {
                                             name: newDivisionName,
                                             location: newDivisionLocation,
