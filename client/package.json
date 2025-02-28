@@ -1,7 +1,7 @@
 {
   "name": "streamline-app",
   "version": "0.1.0",
-  "proxy": "https://localhost:8080",
+  "proxy": "${NEXT_PUBLIC_API_URL}",
   "private": true,
   "scripts": {
     "dev": "next dev --experimental-https",
