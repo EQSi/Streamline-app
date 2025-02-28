@@ -1,4 +1,4 @@
-import type { Config } from "tailwindcss";
+// import type { Config } from "tailwindcss";
 import { createThemes } from "tw-colors";
 import colors from "tailwindcss/colors";
 
@@ -26,11 +26,11 @@ const shadeMapping = {
 	900: "50",
 };
 
-const generateThemeObject = (colors: any, mapping: any, invert = false) => {
-	const theme: any = {};
+const generateThemeObject = (colors, mapping, invert = false) => {
+	const theme = {};
 	baseColors.forEach((color) => {
 		theme[color] = {};
-		Object.entries(mapping).forEach(([key, value]: any) => {
+		Object.entries(mapping).forEach(([key, value]) => {
 			const shadeKey = invert ? value : key;
 			theme[color][key] = colors[color][shadeKey];
 		});
@@ -110,4 +110,4 @@ export default {
 		},
 	},
 	plugins: [createThemes(themes), require("tailwindcss-animate")],
-} satisfies Config;
+};

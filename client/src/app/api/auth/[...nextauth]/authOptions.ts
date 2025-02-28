@@ -1,10 +1,9 @@
 
-import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import axios from "axios";
 import https from "https";
 import { jwtDecode } from "jwt-decode";
-import type { NextApiRequest, NextApiResponse } from "next";
+
 
 declare module "next-auth" {
   interface Session {
@@ -24,13 +23,8 @@ interface DecodedToken {
   [key: string]: any;
 }
 
-// Helper function to clean up the user ID if needed
-function convertWString(wstr: string): string {
-  return wstr.startsWith("L'") && wstr.endsWith("'") ? wstr.slice(2, -1) : wstr;
-}
-
 export const authOptions = {
-  secret: process.env.NEXTAUTH_SECRET,
+  secret: process.env.NEXTAUTH_SECRET || 'default_secret',
   session: {
     strategy: "jwt" as const,
     maxAge: 30 * 24 * 60 * 60, // 30 days
