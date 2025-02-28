@@ -37,12 +37,12 @@ const LoginForm = () => {
         if (result?.error) {
             setError("Invalid username or password");
         } else {
-            router.push("https://localhost:3000/dashboard"); 
+            router.push("/dashboard"); 
         }
     };
 
     const handleGoogleLogin = async () => {
-        signIn("google", { callbackUrl: "https://localhost:3000/dashboard" });
+        signIn("google", { callbackUrl: "/dashboard" });
     };
 
     const fetchCsrfToken = async () => {
