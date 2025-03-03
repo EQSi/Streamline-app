@@ -24,7 +24,7 @@ interface DecodedToken {
 const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://localhost:8080";
 
 export const authOptions = {
-  secret: process.env.NEXTAUTH_SECRET || 'default_secret',
+  secret: process.env.NEXTAUTH_SECRET || "default_secret",
   session: {
     strategy: "jwt" as const,
     maxAge: 30 * 24 * 60 * 60, // 30 days
@@ -82,7 +82,7 @@ export const authOptions = {
     }),
   ],
   callbacks: {
-    async jwt({ token, user }: { token: any, user: any }) {
+    async jwt({ token, user }: { token: any; user: any }) {
       if (user) {
         token.accessToken = user.token;
         token.id = user.id;
@@ -92,7 +92,7 @@ export const authOptions = {
       }
       return token;
     },
-    async session({ session, token }: { session: any, token: any }) {
+    async session({ session, token }: { session: any; token: any }) {
       if (token) {
         session.accessToken = token.accessToken;
         session.user = {
@@ -105,14 +105,17 @@ export const authOptions = {
       }
       return session;
     },
-    async redirect({ url, baseUrl }: { url: string, baseUrl: string }) {
+    async redirect({ url, baseUrl }: { url: string; baseUrl: string }) {
       const redirectUrl = process.env.NEXTAUTH_URL || baseUrl;
+      if (!process.env.NEXTAUTH_URL) {
+        console.warn("NEXTAUTH_URL not set. Using baseUrl for redirects");
+      }
       return url.startsWith(redirectUrl) ? url : redirectUrl;
     },
   },
   pages: {
-    signIn: '/login',
-    error: '/error',
+    signIn: "/login",
+    error: "/error",
   },
-  debug: process.env.NODE_ENV === 'development',
+  debug: process.env.NODE_ENV === "development",
 };
