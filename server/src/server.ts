@@ -17,15 +17,16 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 8080;
+const FRONTEND_URL = process.env.FRONTEND_URL || 'https://localhost:3000';
 
 const options = {
   key: Buffer.from(process.env.SSL_KEY_FILE as string, 'base64'),
   cert: Buffer.from(process.env.SSL_CRT_FILE as string, 'base64'),
 };
 
-// Apply CORS middleware
+// Apply CORS middleware using the FRONTEND_URL from .env
 app.use(cors({
-  origin: 'https://localhost:3000', // Adjust this based on your frontend URL
+  origin: FRONTEND_URL,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   credentials: true,
 }));

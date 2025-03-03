@@ -1,9 +1,7 @@
-
 import CredentialsProvider from "next-auth/providers/credentials";
 import axios from "axios";
 import https from "https";
 import { jwtDecode } from "jwt-decode";
-
 
 declare module "next-auth" {
   interface Session {
@@ -22,6 +20,8 @@ interface DecodedToken {
   userId: string;
   [key: string]: any;
 }
+
+const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://localhost:8080";
 
 export const authOptions = {
   secret: process.env.NEXTAUTH_SECRET || 'default_secret',
@@ -43,7 +43,7 @@ export const authOptions = {
           if (!credentials) throw new Error("Credentials are required");
 
           const response = await axios.post(
-            "https://localhost:8080/api/auth/login",
+            `${apiUrl}/api/auth/login`,
             {
               username: credentials.username,
               password: credentials.password,
@@ -57,7 +57,7 @@ export const authOptions = {
             const decodedToken = jwtDecode<DecodedToken>(response.data.accessToken);
             const userId = decodedToken.userId;
 
-            const userDetails = await axios.get(`https://localhost:8080/api/users/${userId}`, {
+            const userDetails = await axios.get(`${apiUrl}/api/users/${userId}`, {
               headers: {
                 Authorization: `Bearer ${response.data.accessToken}`,
               },
