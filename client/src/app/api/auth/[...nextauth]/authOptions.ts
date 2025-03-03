@@ -106,7 +106,8 @@ export const authOptions = {
       return session;
     },
     async redirect({ url, baseUrl }: { url: string, baseUrl: string }) {
-      return url.startsWith(baseUrl) ? url : baseUrl;
+      const redirectUrl = process.env.NEXTAUTH_URL || baseUrl;
+      return url.startsWith(redirectUrl) ? url : redirectUrl;
     },
   },
   pages: {
