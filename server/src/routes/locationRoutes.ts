@@ -59,6 +59,29 @@ router.get("/locations", async (_req: Request, res: Response) => {
     }
 });
 
+router.put("/locations/:id", async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const { name, street1, street2, city, state, zipCode } = req.body;
+
+    try {
+        const updatedLocation = await prisma.location.update({
+            where: { id: parseInt(id, 10) },
+            data: {
+                name,
+                street1,
+                street2,
+                city,
+                state,
+                zipCode,
+            },
+        });
+        res.json(updatedLocation);
+    } catch (error) {
+        console.error("Error updating location:", error);
+        res.status(500).json({ error: "Internal server error" });
+    }
+});
+
 router.post("/locations", async (req: Request, res: Response) => {
     const { name, street1, street2, city, state, zipCode } = req.body;
 

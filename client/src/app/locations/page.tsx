@@ -42,6 +42,161 @@ const states = [
     "RI", "SC", "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY"
 ];
 
+interface EditableLocationItemProps {
+    location: Location;
+    index: number;
+    session: any;
+}
+
+const EditableLocationItem = ({ location, index, session }: EditableLocationItemProps) => {
+    const [isEditing, setIsEditing] = useState(false);
+    const [editedLocation, setEditedLocation] = useState<Location>(location);
+
+    const handleSave = async () => {
+        try {
+            if (!session || !session.accessToken) return;
+            const res = await axiosInstance.put(`/locations/${location.id}`, {
+                name: editedLocation.name,
+                address: {
+                    line1: editedLocation.address.line1,
+                    line2: editedLocation.address.line2,
+                    city: editedLocation.address.city,
+                    state: editedLocation.address.state,
+                    zip: editedLocation.address.zip,
+                },
+                companies: editedLocation.companies,
+                divisions: editedLocation.divisions,
+            }, {
+                headers: {
+                    "Authorization": `Bearer ${session.accessToken}`,
+                    "Content-Type": "application/json",
+                },
+            });
+            // Optionally update local state with res.data if needed
+            setIsEditing(false);
+        } catch (error) {
+            console.error("Error updating location:", error);
+        }
+    };
+
+    return (
+        <AccordionItem value={location.id}>
+            <AccordionTrigger
+                className={`group flex justify-between items-center py-4 px-4 border-b ${
+                    index % 2 === 0 ? "bg-white" : "bg-gray-100"
+                } hover:bg-gray-100`}
+            >
+                <div className="flex flex-col sm:flex-row sm:space-x-4 w-full">
+                    <span className="truncate w-1/3">{editedLocation.name}</span>
+                    <span className="truncate w-1/3">{`${editedLocation.address.line1}, ${editedLocation.address.city}, ${editedLocation.address.state} ${editedLocation.address.zip}`}</span>
+                    <span className="truncate w-1/3">{editedLocation.companies.join(', ')}</span>
+                </div>
+            </AccordionTrigger>
+            <AccordionContent>
+                <div className="p-4 bg-gray-50 shadow rounded">
+                    {isEditing ? (
+                        <form
+                            onSubmit={(e) => {
+                                e.preventDefault();
+                                handleSave();
+                            }}
+                            className="grid gap-2"
+                        >
+                            <input
+                                value={editedLocation.name}
+                                onChange={(e) =>
+                                    setEditedLocation({ ...editedLocation, name: e.target.value })
+                                }
+                                className="border rounded px-2 py-1"
+                            />
+                            <input
+                                value={editedLocation.address.line1}
+                                onChange={(e) =>
+                                    setEditedLocation({
+                                        ...editedLocation,
+                                        address: { ...editedLocation.address, line1: e.target.value },
+                                    })
+                                }
+                                className="border rounded px-2 py-1"
+                            />
+                            <input
+                                value={editedLocation.address.city}
+                                onChange={(e) =>
+                                    setEditedLocation({
+                                        ...editedLocation,
+                                        address: { ...editedLocation.address, city: e.target.value },
+                                    })
+                                }
+                                className="border rounded px-2 py-1"
+                            />
+                            <input
+                                value={editedLocation.address.state}
+                                onChange={(e) =>
+                                    setEditedLocation({
+                                        ...editedLocation,
+                                        address: { ...editedLocation.address, state: e.target.value },
+                                    })
+                                }
+                                className="border rounded px-2 py-1"
+                            />
+                            <input
+                                value={editedLocation.address.zip}
+                                onChange={(e) =>
+                                    setEditedLocation({
+                                        ...editedLocation,
+                                        address: { ...editedLocation.address, zip: e.target.value },
+                                    })
+                                }
+                                className="border rounded px-2 py-1"
+                            />
+                            <div className="flex gap-2">
+                                <button type="submit" className="px-3 py-1 bg-green-600 text-white rounded">
+                                    Save
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setIsEditing(false);
+                                        setEditedLocation(location);
+                                    }}
+                                    className="px-3 py-1 bg-red-600 text-white rounded"
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                        </form>
+                    ) : (
+                        <div>
+                            <p>
+                                <span className="font-semibold">Name: </span>
+                                {editedLocation.name}
+                            </p>
+                            <p>
+                                <span className="font-semibold">Address: </span>
+                                {`${editedLocation.address.line1}, ${editedLocation.address.city}, ${editedLocation.address.state} ${editedLocation.address.zip}`}
+                            </p>
+                            <p>
+                                <span className="font-semibold">Companies: </span>
+                                {editedLocation.companies.join(', ')}
+                            </p>
+                            <p>
+                                <span className="font-semibold">Divisions: </span>
+                                {editedLocation.divisions.join(', ')}
+                            </p>
+                            <button
+                                onClick={() => setIsEditing(true)}
+                                className="mt-2 px-3 py-1 bg-blue-600 text-white rounded"
+                            >
+                                Edit
+                            </button>
+                        </div>
+                    )}
+                </div>
+            </AccordionContent>
+        </AccordionItem>
+    );
+};
+
 export default function LocationsPage() {
     const router = useRouter();
     const { data: session } = useSession();
@@ -57,16 +212,13 @@ export default function LocationsPage() {
         companies: '',
         divisions: ''
     });
-    const [showAddForm, setShowAddForm] = useState(false); // New state for toggling form visibility
-    const [availableCompanies, setAvailableCompanies] = useState<Company[]>([]); // State for available companies
-    const [availableDivisions, setAvailableDivisions] = useState<Division[]>([]); // State for available divisions
-    const [selectedCompany, setSelectedCompany] = useState(''); // State for selected company
-    
-    // New state for pagination if needed
+    const [showAddForm, setShowAddForm] = useState(false);
+    const [availableCompanies, setAvailableCompanies] = useState<Company[]>([]);
+    const [availableDivisions, setAvailableDivisions] = useState<Division[]>([]);
+    const [selectedCompany, setSelectedCompany] = useState('');
     const [visibleCount, setVisibleCount] = useState(25);
     const [currentPage, setCurrentPage] = useState(1);
 
-    // Fetch locations on mount
     useEffect(() => {
         if (!session || !(session as any).accessToken) return;
         const fetchLocations = async () => {
@@ -86,7 +238,6 @@ export default function LocationsPage() {
         fetchLocations();
     }, [session]);
 
-    // Fetch companies on mount
     useEffect(() => {
         if (!session || !(session as any).accessToken) return;
         const fetchCompanies = async () => {
@@ -105,7 +256,6 @@ export default function LocationsPage() {
         fetchCompanies();
     }, [session]);
 
-    // Fetch divisions based on selected company
     useEffect(() => {
         if (selectedCompany && session && (session as any).accessToken) {
             const fetchDivisions = async () => {
@@ -127,7 +277,6 @@ export default function LocationsPage() {
         }
     }, [selectedCompany, session]);
 
-    // Filter locations based on search query (search by address, company or division)
     const filteredLocations = locations.filter(loc => {
         const searchLower = searchQuery.toLowerCase();
         return (
@@ -137,7 +286,6 @@ export default function LocationsPage() {
         );
     });
 
-    // Handle form submission to create a new location
     const handleAddLocation = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
@@ -164,7 +312,7 @@ export default function LocationsPage() {
             });
             setLocations([...locations, res.data]);
             setNewLocation({ name: '', line1: '', line2: '', city: '', state: '', zip: '', companies: '', divisions: '' });
-            setShowAddForm(false); 
+            setShowAddForm(false);
         } catch (error) {
             console.error("Error adding location:", error);
         }
@@ -281,7 +429,9 @@ export default function LocationsPage() {
                             <select
                                 multiple
                                 value={newLocation.divisions.split(',')}
-                                onChange={(e) => setNewLocation({ ...newLocation, divisions: Array.from(e.target.selectedOptions, option => option.value).join(',') })}
+                                onChange={(e) =>
+                                    setNewLocation({ ...newLocation, divisions: Array.from(e.target.selectedOptions, option => option.value).join(',') })
+                                }
                                 className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring focus:ring-indigo-300"
                                 required
                             >
@@ -312,26 +462,13 @@ export default function LocationsPage() {
                     {filteredLocations
                         .slice((currentPage - 1) * visibleCount, currentPage * visibleCount)
                         .map((location, index) => (
-                            <AccordionItem key={location.id} value={location.id}>
-                            <AccordionTrigger
-                                className={`group flex justify-between items-center py-4 px-4 border-b ${
-                                    index % 2 === 0 ? "bg-white" : "bg-gray-100"
-                                } hover:bg-gray-100`}
-                            >
-                                <div className="flex flex-col sm:flex-row sm:space-x-4 w-full">
-                                    <span className="truncate w-1/3">{location.name}</span>
-                                    <span className="truncate w-1/3">{`${location.address?.line1 ?? ''}, ${location.address?.city ?? ''}, ${location.address?.state ?? ''} ${location.address?.zip ?? ''}`}</span>
-                                    <span className="truncate w-1/3">{location.companies?.join(', ') ?? ''}</span>
-                                </div>
-                            </AccordionTrigger>
-                                <AccordionContent>
-                                    <p><span className="font-semibold">Name: </span>{location.name}</p>
-                                    <p><span className="font-semibold">Address: </span>{`${location.address?.line1 ?? ''}, ${location.address?.city ?? ''}, ${location.address?.state ?? ''} ${location.address?.zip ?? ''}`}</p>
-                                    <p><span className="font-semibold">Companies: </span>{location.companies.join(', ')}</p>
-                                    <p><span className="font-semibold">Divisions: </span>{location.divisions.join(', ')}</p>
-                                </AccordionContent>
-                            </AccordionItem>
-                        ))}
+                            <EditableLocationItem
+                                key={location.id}
+                                location={location}
+                                index={index}
+                                session={session}
+                            />
+                    ))}
                 </Accordion>
             </div>
             {filteredLocations.length > visibleCount && (
