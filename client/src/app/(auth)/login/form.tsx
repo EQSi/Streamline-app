@@ -12,7 +12,7 @@ const LoginForm = () => {
     const [error, setError] = useState("");
 
     const validateInput = (input: string) => {
-        const regex = /^[a-zA-Z0-9_]*$/;
+        const regex = /^[a-zA-Z0-9_!@#$%^&*()+=-]*$/;
         return regex.test(input);
     };
 
@@ -20,8 +20,8 @@ const LoginForm = () => {
         e.preventDefault();
         setError("");
 
-        if (!validateInput(formData.username) || !validateInput(formData.password)) {
-            setError("Invalid input. Only alphanumeric characters and underscores are allowed.");
+        if (!formData.username || !formData.password) {
+            setError("Username and password cannot be empty.");
             return;
         }
 
