@@ -82,7 +82,11 @@ router.get('/users/:id', async (req: Request, res: Response): Promise<void> => {
 
 // Create a new user
 router.post('/users', async (req: Request, res: Response) => {
-  const { username, password, roles } = req.body;
+  const { username, password, roleId } = req.body;
+  if (!roleId) {
+    res.status(400).json({ error: 'roleId is required' });
+    return;
+  }
   try {
     const existingUser = await prisma.user.findUnique({ where: { username } });
     if (existingUser) {
@@ -94,7 +98,9 @@ router.post('/users', async (req: Request, res: Response) => {
       data: {
         username,
         password: hashedPassword,
-        role: roles,
+        role: {
+          connect: { id: roleId }
+        },
       },
     });
 
@@ -110,7 +116,7 @@ router.post('/users', async (req: Request, res: Response) => {
 // Update an existing user
 router.put('/users/:id', async (req: Request, res: Response) => {
   const { id } = req.params;
-  const { username, password, roles } = req.body;
+  const { username, password, roleId } = req.body;
   try {
     const hashedPassword = await bcrypt.hash(password, 10);
     const updatedUser = await prisma.user.update({
@@ -118,7 +124,7 @@ router.put('/users/:id', async (req: Request, res: Response) => {
       data: {
         username,
         password: hashedPassword,
-        role: roles,
+        role: { connect: { id: roleId } },
       },
     });
 

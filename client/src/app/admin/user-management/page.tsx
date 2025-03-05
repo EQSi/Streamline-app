@@ -29,7 +29,7 @@ async function hashPassword(password: string): Promise<string> {
 }
 
 // Function to validate login credentials
-const validateCredentials = (username: string, password: string) => {
+const validateCredentials = (username: string, password: string): { isValid: boolean; errors: string[] } => {
     const usernameRegex = /^[a-zA-Z][a-zA-Z0-9_]{2,19}$/;
     const passwordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
 
@@ -78,11 +78,17 @@ interface User {
     role: string; 
 }
 
+interface Role {
+    id: string;
+    name: string;
+}
+
 export default function UserManagementPage() {
     const router = useRouter();
     const { data: session } = useSession();
     const [employees, setEmployees] = useState<Employee[]>([]);
     const [users, setUsers] = useState<User[]>([]);
+    const [roles, setRoles] = useState<Role[]>([]);
     const [visibleUserCount, setVisibleUserCount] = useState(25);
     const [currentPage, setCurrentPage] = useState(1);
     const [editingEmployeeId, setEditingEmployeeId] = useState<string | null>(null);
@@ -98,7 +104,7 @@ export default function UserManagementPage() {
         userId: 0,
         username: "",
         password: "",
-        role: "EMPLOYEE",
+        roleId: "",
         salary: 0
     });
     const [showAddEmployeeForm, setShowAddEmployeeForm] = useState(false);
@@ -142,8 +148,24 @@ export default function UserManagementPage() {
             }
         };
 
+        const fetchRoles = async () => {
+            try {
+                const res = await axiosInstance.get('/roles', {
+                    headers: {
+                        "Authorization": `Bearer ${session.accessToken}`,
+                        "Content-Type": "application/json",
+                        "Cache-Control": "no-store",
+                    },
+                });
+                setRoles(res.data);
+            } catch (error) {
+                console.error('Error fetching roles:', error);
+            }
+        };
+
         fetchEmployees();
         fetchUsers();
+        fetchRoles();
     }, [session]);
 
     const handleShowAddEmployeeForm = () => {
@@ -165,7 +187,7 @@ export default function UserManagementPage() {
             const newUser = {
                 username: newEmployee.username,
                 password: hashedPassword,
-                role: newEmployee.role,
+                roleId: newEmployee.roleId,
             };
 
             const userRes = await axiosInstance.post('/users', newUser, {
@@ -176,7 +198,7 @@ export default function UserManagementPage() {
             });
 
             const createdUser = userRes.data;
-            const { username, password, role, ...employeeData } = newEmployee;
+            const { username, password, roleId, ...employeeData } = newEmployee;
             const employeeToAdd = { ...employeeData, userId: createdUser.id };
 
             const res = await axiosInstance.post('/employees', employeeToAdd, {
@@ -201,7 +223,7 @@ export default function UserManagementPage() {
                 userId: 0,
                 username: "",
                 password: "",
-                role: "EMPLOYEE",
+                roleId: "",
                 salary: 0,
             });
         } catch (error) {
@@ -517,13 +539,16 @@ export default function UserManagementPage() {
                         <div className="space-y-2">
                             <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
                             <select
-                                value={newEmployee.role}
-                                onChange={(e) => setNewEmployee({ ...newEmployee, role: e.target.value })}
+                                value={newEmployee.roleId}
+                                onChange={(e) => setNewEmployee({ ...newEmployee, roleId: e.target.value })}
                                 className="border border-gray-300 rounded w-full px-3 py-2 focus:outline-none focus:ring focus:ring-indigo-300"
                             >
-                                <option value="ADMIN">ADMIN</option>
-                                <option value="MANAGER">MANAGER</option>
-                                <option value="EMPLOYEE">EMPLOYEE</option>
+                                <option value="">Select Role</option>
+                                {roles.map((role) => (
+                                    <option key={role.id} value={role.id}>
+                                        {role.name}
+                                    </option>
+                                ))}
                             </select>
                         </div>
                         <button
