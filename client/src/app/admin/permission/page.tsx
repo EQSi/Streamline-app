@@ -184,14 +184,14 @@ export default function PermissionManagementPage() {
         return <div className="flex justify-center items-center min-h-screen">Loading...</div>;
     }
 
-    const canAccessPage = ability.can('manage', 'Role') || userRole === 'ADMIN';
-    if (!canAccessPage) {
-        return (
-            <div className="flex justify-center items-center min-h-screen">
-                You do not have access to this page.
-            </div>
-        );
-    }
+    //const canAccessPage = ability.can('manage', 'Role') || userRole === 'ADMIN';
+    //if (!canAccessPage) {
+        //return (
+            //<div className="flex justify-center items-center min-h-screen">
+                //You do not have access to this page.
+            //</div>
+        //);
+    //}
 
     return (
         <div className="flex flex-col items-start min-h-screen bg-gray-50 py-4 px-4">

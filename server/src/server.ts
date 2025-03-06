@@ -38,7 +38,7 @@ app.get("/", (req, res) => {
   res.send("This is home route");
 });
 
-// Routes that don't require authentication
+
 app.use('/api/auth', authRoutes);
 
 app.use('/api', [authenticateToken], divisionRoutes);
