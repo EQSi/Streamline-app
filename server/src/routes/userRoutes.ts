@@ -118,14 +118,26 @@ router.put('/users/:id', async (req: Request, res: Response) => {
   const { id } = req.params;
   const { username, password, roleId } = req.body;
   try {
-    const hashedPassword = await bcrypt.hash(password, 10);
+    let data: any = {};
+    if (username !== undefined) {
+      data.username = username;
+    }
+    if (roleId !== undefined) {
+      // Check if the role exists before connecting
+      const role = await prisma.role.findUnique({ where: { id: roleId } });
+      if (!role) {
+        res.status(404).json({ error: 'Role not found' });
+        return;
+      }
+      data.role = { connect: { id: roleId } };
+    }
+    if (password) {
+      const hashedPassword = await bcrypt.hash(password, 10);
+      data.password = hashedPassword;
+    }
     const updatedUser = await prisma.user.update({
       where: { id }, // id is now treated as string
-      data: {
-        username,
-        password: hashedPassword,
-        role: { connect: { id: roleId } },
-      },
+      data,
     });
 
     // Exclude password from the response

@@ -75,7 +75,8 @@ interface Employee {
 interface User {
     id: string;
     username: string;
-    role: string; 
+    role: string;
+    roleId?: string;
 }
 
 interface Role {
@@ -254,21 +255,32 @@ export default function UserManagementPage() {
             setEmployees((prevEmployees) =>
                 prevEmployees.map((emp) => (emp.id === updatedEmployee.id ? updatedEmployee : emp))
             );
-
-            if (editingPassword.trim() !== "") {
-                const { isValid, errors } = validateCredentials(employee.email, editingPassword);
-                if (!isValid) {
-                    alert(errors.join('\n'));
+    
+            // Get the currently selected role from the users state
+            const currentUser = users.find(user => user.id === employee.userId.toString());
+            if (currentUser) {
+                const matchingRole = roles.find(r => r.name === currentUser.role);
+                if (!matchingRole) {
+                    alert('Role not found');
                     return;
                 }
-                const hashedPassword = await hashPassword(editingPassword);
-                await axiosInstance.put(`/users/${employee.userId}`, { password: hashedPassword }, {
+                const updatePayload: any = { roleId: matchingRole.id };
+                if (editingPassword.trim() !== "") {
+                    const { isValid, errors } = validateCredentials(currentUser.username, editingPassword);
+                    if (!isValid) {
+                        alert(errors.join('\n'));
+                        return;
+                    }
+                    updatePayload.password = await hashPassword(editingPassword);
+                }
+                await axiosInstance.put(`/users/${employee.userId}`, updatePayload, {
                     headers: { 
                         'Content-Type': 'application/json',
                         "Authorization": `Bearer ${(session as any).accessToken}`,
                     },
                 });
             }
+    
             setEditingEmployeeId(null);
             setEditingPassword("");
         } catch (error) {
@@ -588,7 +600,7 @@ export default function UserManagementPage() {
                                     </span>
                                     <span className="truncate w-1/4">{employee.email}</span>
                                     <span className="truncate w-1/4 ml-2">
-                                        {users.find((user) => user.id === employee.userId.toString())?.username}
+                                        {users.find(user => user.id === employee.userId.toString())?.username}
                                     </span>
                                 </div>
                             </AccordionTrigger>
@@ -787,6 +799,40 @@ export default function UserManagementPage() {
                                                     onChange={(e) => setEditingPassword(e.target.value)}
                                                     className="border border-gray-300 rounded w-full px-3 py-2 focus:outline-none focus:ring focus:ring-indigo-300"
                                                 />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                    Role
+                                                </label>
+                                                <select
+                                                    value={
+                                                        // Use the new roleId property, or fallback to an empty string if not set
+                                                        users.find(user => user.id === employee.userId.toString())?.roleId || ""
+                                                    }
+                                                    onChange={(e) => {
+                                                        const newRoleId = e.target.value;
+                                                        setUsers(
+                                                            users.map(user =>
+                                                                user.id === employee.userId.toString()
+                                                                    ? {
+                                                                          ...user,
+                                                                          // Update the roleId and set role to the corresponding role name from the roles list.
+                                                                          roleId: newRoleId,
+                                                                          role: roles.find(role => role.id === newRoleId)?.name || "",
+                                                                      }
+                                                                    : user
+                                                            )
+                                                        );
+                                                    }}
+                                                    className="border border-gray-300 rounded w-full px-3 py-2 focus:outline-none focus:ring focus:ring-indigo-300"
+                                                >
+                                                    <option value="">Select Role</option>
+                                                    {roles.map((role) => (
+                                                        <option key={role.id} value={role.id}>
+                                                            {role.name}
+                                                        </option>
+                                                    ))}
+                                                </select>
                                             </div>
                                             <div className="flex space-x-2">
                                                 <button
