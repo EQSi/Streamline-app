@@ -1,4 +1,4 @@
-import { Router, Request, Response } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import prisma from '../prismaClient'; // Ensure you have a Prisma client setup
 import bcrypt from 'bcrypt';
 
@@ -66,6 +66,29 @@ router.post('/permission-groups/:id/permissions', async (req: Request, res: Resp
     } catch (error) {
         console.error('Error adding permissions to permission group:', error);
         res.status(500).json({ error: 'Failed to add permissions to permission group', details: (error as Error).message });
+    }
+});
+
+router.delete('/permission-groups/:groupId/permissions/:permissionId', async (req: Request, res: Response) => {
+    const { groupId, permissionId } = req.params;
+    try {
+        const permissionGroup = await prisma.permissionGroup.update({
+            where: { id: groupId },
+            data: {
+                permissions: {
+                    deleteMany: { permissionId }
+                }
+            },
+            include: {
+                permissions: {
+                    include: { permission: true }
+                }
+            }
+        });
+        res.json(permissionGroup.permissions.map(p => p.permission));
+    } catch (error) {
+        console.error('Error removing permission from permission group:', error);
+        res.status(500).json({ error: 'Failed to remove permission from permission group', details: (error as Error).message });
     }
 });
 
@@ -149,6 +172,43 @@ router.get('/roles', async (_req: Request, res: Response) => {
     } catch (error) {
         console.error('Error fetching roles:', error);
         res.status(500).json({ error: 'Failed to fetch roles' });
+    }
+});
+
+router.post('/roles', async (req: Request, res: Response, next: NextFunction) => {
+    const { name } = req.body;
+    if (!name) {
+        res.status(400).json({ error: 'Role name is required' });
+        return;
+    }
+    try {
+        // Create a role and at the same time create an empty permission group for consistency with other routes
+        const newRole = await prisma.role.create({
+            data: {
+                name,
+                permissionGroup: {
+                    create: {
+                        // Provide required fields for the permission group, e.g., a name
+                        name: `${name} Permission Group`
+                    }
+                }
+            },
+            include: {
+                permissionGroup: {
+                    include: {
+                        permissions: {
+                            include: {
+                                permission: true,
+                            },
+                        },
+                    },
+                },
+            },
+        });
+        res.status(201).json(newRole);
+    } catch (error) {
+        console.error('Error creating role:', error);
+        res.status(500).json({ error: 'Failed to create role', details: (error as Error).message });
     }
 });
 

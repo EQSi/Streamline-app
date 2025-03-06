@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import axiosInstance from '@/src/state/axios';
-import { useAbility } from '@/src/context/abilityContext'; // Adjust the import path as needed
+import { useAbility } from '@/src/context/abilityContext';
 
 interface Permission {
     id: string;
@@ -43,7 +43,9 @@ export default function PermissionManagementPage() {
     const [selectedRole, setSelectedRole] = useState<Role | null>(null);
     const [permissions, setPermissions] = useState<Permission[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
-    const [userRole, setUserRole] = useState<string>(''); // Store current user's role name
+    const [userRole, setUserRole] = useState<string>(''); 
+    const [newRoleName, setNewRoleName] = useState<string>(''); 
+    const [showNewRoleForm, setShowNewRoleForm] = useState<boolean>(false);
 
     useEffect(() => {
         const fetchRolesAndPermissions = async () => {
@@ -56,7 +58,6 @@ export default function PermissionManagementPage() {
                         Authorization: `Bearer ${session.accessToken}`,
                     },
                 });
-                // Assume userResponse.data.role is an object with a name field.
                 const fetchedUserRole = userResponse.data.role;
                 setUserRole(fetchedUserRole.name);
 
@@ -73,7 +74,7 @@ export default function PermissionManagementPage() {
                     const permissionGroupRes = await axiosInstance.get(`/roles/${role.id}/permission-group`, {
                         headers: { "Authorization": `Bearer ${session.accessToken}` }
                     });
-                    return { ...role, permissionGroup: { ...permissionGroupRes.data, name: permissionGroupRes.data.name || '' } };
+                    return { ...role, permissionGroup: { ...permissionGroupRes.data, permissions: permissionGroupRes.data.permissions || [], name: permissionGroupRes.data.name || '' } };
                 }));
 
                 setRoles(rolesData);
@@ -103,11 +104,17 @@ export default function PermissionManagementPage() {
               ];
         
         try {
-            await axiosInstance.post(`/permission-groups/${selectedRole.permissionGroup.id}/permissions`, {
-                permissionIds: updatedPermissions.map(p => p.permissionId),
-            }, {
-                headers: { "Authorization": `Bearer ${session.accessToken}` }
-            });
+            if (hasPermission) {
+                await axiosInstance.delete(`/permission-groups/${selectedRole.permissionGroup.id}/permissions/${permissionId}`, {
+                    headers: { "Authorization": `Bearer ${session.accessToken}` }
+                });
+            } else {
+                await axiosInstance.post(`/permission-groups/${selectedRole.permissionGroup.id}/permissions`, {
+                    permissionIds: updatedPermissions.map(p => p.permissionId),
+                }, {
+                    headers: { "Authorization": `Bearer ${session.accessToken}` }
+                });
+            }
             
             setRoles(roles.map(role =>
                 role.id === selectedRole.id
@@ -141,13 +148,43 @@ export default function PermissionManagementPage() {
         }
     };
 
+    const handleCreateRole = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!session || !session.accessToken || !newRoleName.trim()) return;
+
+        try {
+            const roleRes = await axiosInstance.post(
+                '/roles',
+                { name: newRoleName.trim() },
+                { headers: { Authorization: `Bearer ${session.accessToken}` } }
+            );
+            const createdRole: Role = roleRes.data;
+
+            const pgRes = await axiosInstance.post(
+                `/roles/${createdRole.id}/permission-group`,
+                {},
+                { headers: { Authorization: `Bearer ${session.accessToken}` } }
+            );
+            const permissionGroup = { ...pgRes.data, permissions: [] };
+
+            const newRole: Role = {
+                ...createdRole,
+                permissionGroup,
+            };
+
+            setRoles((prev) => [...prev, newRole]);
+            setNewRoleName('');
+            setShowNewRoleForm(false);
+        } catch (error) {
+            console.error('Error creating new role:', error);
+        }
+    };
+
     if (loading) {
         return <div className="flex justify-center items-center min-h-screen">Loading...</div>;
     }
 
-    // Use the userRole from fetched data along with ability checks to determine access.
     const canAccessPage = ability.can('manage', 'Role') || userRole === 'ADMIN';
-
     if (!canAccessPage) {
         return (
             <div className="flex justify-center items-center min-h-screen">
@@ -156,14 +193,36 @@ export default function PermissionManagementPage() {
         );
     }
 
-    // Debug logging
-    console.log('Current ability:', ability);
-    console.log('Can manage role:', ability.can('manage', 'Role'));
-    console.log('Selected role:', selectedRole);
-
     return (
         <div className="flex flex-col items-start min-h-screen bg-gray-50 py-4 px-4">
             <h1 className="text-2xl font-bold mb-2">Permission Management</h1>
+            {/* Add New Role Button */}
+            <div className="w-full mb-4">
+                <button
+                    onClick={() => setShowNewRoleForm(prev => !prev)}
+                    className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md transition duration-200"
+                >
+                    {showNewRoleForm ? 'Cancel' : 'Add New Role'}
+                </button>
+                {showNewRoleForm && (
+                    <div className="mt-4 bg-white shadow-md rounded-lg p-4">
+                        <h2 className="text-xl font-semibold mb-4">Create New Role</h2>
+                        <form onSubmit={handleCreateRole} className="flex flex-col sm:flex-row sm:items-center gap-4">
+                            <input
+                                type="text"
+                                placeholder="Enter role name"
+                                value={newRoleName}
+                                onChange={(e) => setNewRoleName(e.target.value)}
+                                className="flex-1 border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                required
+                            />
+                            <button type="submit" className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-md transition duration-200">
+                                Create Role
+                            </button>
+                        </form>
+                    </div>
+                )}
+            </div>
             <div className="flex w-full">
                 {/* Role Selection */}
                 <div className="w-1/3 pr-2">
