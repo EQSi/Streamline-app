@@ -94,12 +94,12 @@ const Navbar = () => {
               <span>No Name Found</span>
             )}
           </div>
-          <button
-            onClick={() => signOut()}
+            <button
+            onClick={() => signOut({ callbackUrl: '/signout' })}
             className="text-gray-500 hover:text-gray-700 focus:outline-none"
-          >
+            >
             <LogOut size={24} />
-          </button>
+            </button>
           <hr className="w-0 h-7 border-solid border-l border-gray-300" />
           <div className="relative mx-2">
             <Bell className="cursor-pointer text-gray-500" size={24} />

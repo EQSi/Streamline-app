@@ -2,6 +2,7 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import axios from "axios";
 import https from "https";
 import { jwtDecode } from "jwt-decode";
+import { signOut } from "next-auth/react";
 
 declare module "next-auth" {
   interface Session {
@@ -115,6 +116,7 @@ export const authOptions = {
   },
   pages: {
     signIn: "/login",
+    signOut: "/signout",
     error: "/error",
   },
   debug: process.env.NODE_ENV === "development",
