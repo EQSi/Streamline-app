@@ -2,7 +2,6 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import axios from "axios";
 import https from "https";
 import { jwtDecode } from "jwt-decode";
-import { signOut } from "next-auth/react";
 
 declare module "next-auth" {
   interface Session {
@@ -95,9 +94,7 @@ export const authOptions = {
     },
     async session({ session, token }: { session: any; token: any }) {
       if (token) {
-        session.accessToken = token.accessToken;
         session.user = {
-          ...session.user,
           id: token.id,
           username: token.username,
           role: token.role,
@@ -116,7 +113,6 @@ export const authOptions = {
   },
   pages: {
     signIn: "/login",
-    signOut: "/signout",
     error: "/error",
   },
   debug: process.env.NODE_ENV === "development",
