@@ -7,6 +7,22 @@ import { useRouter } from 'next/navigation';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import axiosInstance from '@/src/state/axios';
 
+/**
+ * @file page.tsx
+ * @module CompanyPage
+ *
+ * @remarks
+ * Developer Notes:
+ * - The company page component is responsible for rendering the company page.
+ * - This page is meant to be the hub for all companies, where companies can include customers, subcontractors, and vendors.
+ * - Companies can have divisions, contracts, and documents: those documents are the contracts and then from there the contracts holds the rates and other information.
+ * - From this page you can add a new company, view the details of a company, and edit a company.
+ * - Waiting on design from Kameron for this page.
+ * - Started on 2025-02-17. JTW
+ *
+ * @returns {JSX.Element} 
+ */
+
 export type CompanyType = 'Customer' | 'Subcontractor' | 'Vendor';
 
 export interface Location {

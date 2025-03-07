@@ -3,6 +3,24 @@ import axios from "axios";
 import https from "https";
 import { jwtDecode } from "jwt-decode";
 
+/**
+ * @file authOptions.tsx
+ * @module NextAuthOptions
+ *
+ * @remarks
+ * Developer Notes:
+ * - this file is responsible for setting up the authentication options for the NextAuth library
+ * - It provides a custom CredentialsProvider for handling login requests
+ * - It also provides callbacks for handling JWT and session data
+ * - In the session you can find the user's role and permissions which can be used for CASL permisions
+ * - This will eventually be where google authentication will be added as well as refresh tokens for jwt
+ * - This is a changing file and will be updated as the project progresses.
+ * - Moving tokens to a more secure location is a future goal
+ * - Started on 2025-02-03. JTW
+ *
+ * @returns {JSX.Element} 
+ */
+
 declare module "next-auth" {
   interface Session {
     refreshToken?: string;

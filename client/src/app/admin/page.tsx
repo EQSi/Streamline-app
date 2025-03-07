@@ -15,6 +15,22 @@ import {
     Legend,
 } from 'chart.js';
 
+/**
+ * @file page.tsx
+ * @module AdminPage
+ *
+ * @remarks
+ * Developer Notes:
+ * - The AdminLandingPage component is responsible for rendering the admin dashboard.
+ * - Eventually the goal would be to show a more detailed overview of the application. 
+ * - The graphs are not functional and are just placeholders for now.
+ * - The permissions and user-management pages are working and can be used to set role permissions and manage users.
+ * - More information will be added as needed.
+ * - Started on 2025-02-05. JTW
+ *
+ * @returns {JSX.Element} 
+ */
+
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, Title, Tooltip, Legend);
 
 const activeJobsData = {

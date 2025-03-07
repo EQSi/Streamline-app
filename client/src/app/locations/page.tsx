@@ -12,6 +12,23 @@ import {
     AccordionContent,
 } from "@/components/ui/accordion";
 
+
+/**
+ * @file page.tsx
+ * @module LocationsPage
+ *
+ * @remarks
+ * Developer Notes:
+ * - The LocationsPage component is responsible for rendering the application's locations page.
+ * - Every company will have a name, address, and a company, not every location will have to have divisions.
+ * - This allows companies to have many locations or have many companies at one location.
+ * - It provides a list of locations with search functionality and the ability to add, edit, and delete locations.
+ * - The UI for this page is in progress pending Kamerons design.
+ * - Started on 2025-02-17. JTW
+ * 
+ * @returns {JSX.Element} 
+ */
+
 interface Location {
     id: string;
     name: string;

@@ -7,6 +7,22 @@ import 'react-resizable/css/styles.css';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 
+
+/**
+ * @file page.tsx
+ * @module DashboardPage
+ *
+ * @remarks
+ * Developer Notes:
+ * - The dashboard page component is responsible for rendering the user's dashboard.
+ * - The goal of this page is eventual allow user full customization of their dashboard.
+ * - Different positions will have different dashboards and based upon their position they will have different priorties
+ * - Current page is in Progress and just the start of the stomping ground for the dashboard
+ * - Started on 2025-01-12. JTW
+ * 
+ * @returns {JSX.Element} 
+ */
+
 const ResponsiveGridLayout = WidthProvider(Responsive);
 
 interface SessionUser {

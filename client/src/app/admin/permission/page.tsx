@@ -5,6 +5,21 @@ import { useSession } from 'next-auth/react';
 import axiosInstance from '@/src/state/axios';
 import { useAbility } from '@/src/context/abilityContext';
 
+/**
+ * @file page.tsx
+ * @module CASLPermissionsPage
+ *
+ * @remarks
+ * Developer Notes:
+ * - The CASL permissions are used to manage the permissions for each role.
+ * - The permissions are fetched from the server and displayed in a list.
+ * - An admin can change the permissions and assign them to different roles/ create new roles to make new permission groups
+ * - The backend for this is a little more complex because the Permissions, are storrred in a Permission Group, which is then assigned to a Role by a PermissionOnGroup table
+ * - This is functioning and as a reminder each page just needs to have a can.abilty to check if the user has the correct permissions this allows fine tunning of the permissions
+ *
+ * @returns {JSX.Element} 
+ */
+
 interface Permission {
     id: string;
     name: string;

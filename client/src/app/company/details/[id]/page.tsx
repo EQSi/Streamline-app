@@ -5,6 +5,22 @@ import { useParams, useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { Edit2, MapPin, Plus } from 'lucide-react';
 
+/**
+ * @file page.tsx
+ * @module CompanyDetailPage
+ *
+ * @remarks
+ * Developer Notes:
+ * - The company details page component is responsible for rendering the details of a company.
+ * - In this area the user can view information regarding that company, so we can see company contacts, divisions, locations, and contracts.
+ * - The user can also edit or add new divisions, locations, and contracts.
+ * - This is in progress and in wating on designs to be completed.
+ * - This page also allows you to click on the pin and map the location on the map of the location, eventually my goal is to add a textbox that updates at keystroke with suggestions.
+ * - Started on 2025-02-17. JTW
+ *
+ * @returns {JSX.Element} 
+ */
+
 interface Location {
     id?: number;
     street1: string;

@@ -8,6 +8,22 @@ import axiosInstance from '@/src/state/axios';
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 import { Search, ChevronDown } from 'lucide-react';
 
+
+/**
+ * @file page.tsx
+ * @module UserManagementPage
+ *
+ * @remarks
+ * Developer Notes:
+ * - The user management page component is responsible for rendering the user management dashboard.
+ * - The goal of this page is to allow the admin to add new users, edit existing users, or mark a user as terminated.
+ * - Each user will have infromation that corresponds to them including personal information, position, and status.
+ * - This page is marked complete and has finished UI for it as of 2025-02-22. JTW
+ *
+ * @returns {JSX.Element} 
+ */
+
+
 // Helper to format phone numbers e.g. (123) 456-7890
 const formatPhoneNumber = (value: string) => {
     const phoneNumber = value.replace(/[^\d]/g, '');

@@ -1,12 +1,30 @@
 'use client';
 
 import { useState } from 'react';
-import { useAppDispatch, useAppSelector } from '@/src/app/redux';
+import { useAppDispatch, useAppSelector, RootState } from '@/src/app/redux';
 import { setIsDarkMode } from '@/src/state';
+
+/**
+ * @file page.tsx
+ * @module SettingsPage
+ *
+ * @remarks
+ * Developer Notes:
+ * - The SettingsPage component is responsible for rendering the application's settings page.
+ * - It provides controls for toggling dark mode and configuring notification preferences.
+ * - The dark mode toggle button dispatches an action to update the global state.
+ * - Notification preferences are currently rendered as static checkboxes and may be wired to state in future iterations.
+ * - The component utilizes custom hooks (useAppDispatch and useAppSelector) for accessing and updating the application's state.
+ * - This page is in progress and will be updated with additional functionality in future iterations.
+ * - Started on 2025-01-12. JTW
+ *
+ * @returns {JSX.Element} 
+ */
+
 
 export default function SettingsPage() {
   const dispatch = useAppDispatch();
-  const isDarkMode = useAppSelector((state) => state.global.isDarkMode);
+  const isDarkMode = useAppSelector((state: RootState) => state.global.isDarkMode);
   
   return (
     <div className="container mx-auto px-4 py-8">

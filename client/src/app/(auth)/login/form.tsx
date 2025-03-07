@@ -6,6 +6,23 @@ import { signIn } from "next-auth/react";
 import Image from "next/image";
 import Logo from "@/src/assets/logo2.png";
 
+/**
+ * @file form.tsx
+ * @module LoginPage
+ *
+ * @remarks
+ * Developer Notes:
+ * - The login page is one of the first pages seen by the user, it can often times be the first impression of the application.
+ * - With this login page I tried to keep it simple and clean, with a focus on the login form.
+ * - Very straight forward, with a username and password input, and a submit button, there is a forgot password area that is not yet been created.
+ * - The google sign in button is a nice touch, and is a great way to allow users to sign in with their google account, still learning on how to link this to already created user accounts.
+ * - The main goal was having a way to sign in and get into the application to be able to tet out authentication and security features.
+ * - One thing to mention is EQSi does a lot of military work and a requirment of that work is to have MFA, so that is something that will be added in the future.
+ * - Started on 2025-01-12. JTW
+ *
+ * @returns {JSX.Element} 
+ */
+
 const LoginForm = () => {
     const router = useRouter();
     const [formData, setFormData] = useState({ username: "", password: "" });
