@@ -124,7 +124,9 @@ const Sidebar = () => {
       </div>
       
       <div className="mb-10">
-        <p className="text-center text-xs text-gray-500 dark:text-white">&copy; 2025 EQSi</p>
+        <p className="text-center text-xs text-gray-500 dark:text-white">
+          &copy; {new Date().getFullYear()} EQSi
+        </p>
       </div>
     </div>
   );

@@ -5,24 +5,9 @@ import { useParams, useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { Edit2, MapPin, Plus } from 'lucide-react';
 
-/**
- * @file page.tsx
- * @module CompanyDetailPage
- *
- * @remarks
- * Developer Notes:
- * - The company details page component is responsible for rendering the details of a company.
- * - In this area the user can view information regarding that company, so we can see company contacts, divisions, locations, and contracts.
- * - The user can also edit or add new divisions, locations, and contracts.
- * - This is in progress and in wating on designs to be completed.
- * - This page also allows you to click on the pin and map the location on the map of the location, eventually my goal is to add a textbox that updates at keystroke with suggestions.
- * - Started on 2025-02-17. JTW
- *
- * @returns {JSX.Element} 
- */
-
 interface Location {
     id?: number;
+    name: string;
     street1: string;
     street2?: string;
     city: string;
@@ -48,6 +33,9 @@ interface Contract {
 interface Contact {
     id: number;
     name: string;
+    // Extend with phone/email if available from your API
+    phone?: string;
+    email?: string;
 }
 
 export type CompanyType = 'Customer' | 'Subcontractor' | 'Vendor';
@@ -108,6 +96,7 @@ const CompanyDetailsPage: React.FC = () => {
     const [showNewDivisionForm, setShowNewDivisionForm] = useState(false);
     const [newDivisionName, setNewDivisionName] = useState('');
     const [newDivisionLocation, setNewDivisionLocation] = useState<Location>({
+        name: '',
         street1: '',
         street2: '',
         city: '',
@@ -115,19 +104,18 @@ const CompanyDetailsPage: React.FC = () => {
         zipCode: '',
     });
 
-    // Extra fetched data states (kept for contracts and contacts)
+    // Extra fetched data states (for contracts and contacts)
     const [contracts, setContracts] = useState<Contract[]>([]);
     const [contacts, setContacts] = useState<Contact[]>([]);
 
-    // Add a new state for all locations
+    // State for all and display locations
     const [allLocations, setAllLocations] = useState<Location[]>([]);
-
-    // Modify the existing locations state to be specifically for display
     const [displayLocations, setDisplayLocations] = useState<Location[]>([]);
 
-    // New states for editing/adding a division location
+    // States for editing/adding a division location
     const [isEditingLocation, setIsEditingLocation] = useState(false);
     const [editingLocation, setEditingLocation] = useState<Location>({
+        name: '',
         street1: '',
         street2: '',
         city: '',
@@ -164,7 +152,6 @@ const CompanyDetailsPage: React.FC = () => {
         }
     }, [companyId, session]);
 
-    // Update the existing fetchExtraData effect to set displayLocations instead of locations
     useEffect(() => {
         const fetchExtraData = async () => {
             if (!session || !(session as any).accessToken || !company) return;
@@ -195,7 +182,6 @@ const CompanyDetailsPage: React.FC = () => {
         fetchExtraData();
     }, [company, selectedDivision, session]);
 
-    // Update the fetchAllLocations effect to set allLocations
     useEffect(() => {
         const fetchAllLocations = async () => {
             if (!session || !(session as any).accessToken) return;
@@ -261,6 +247,7 @@ const CompanyDetailsPage: React.FC = () => {
 
     const handleAddLocationClick = () => {
         setEditingLocation({
+            name: '',
             street1: '',
             street2: '',
             city: '',
@@ -286,7 +273,7 @@ const CompanyDetailsPage: React.FC = () => {
         try {
             let locationResponse;
             if (!isNewLocation && editingLocation.id) {
-                // For existing locations, simply assign the location to the company or division.
+                // For existing locations, assign the location to the company/division.
                 if (selectedDivision && selectedDivision.id) {
                     locationResponse = await axiosInstance.post(
                         `/companies/${companyId}/divisions/${selectedDivision.id}/assign-location`,
@@ -301,16 +288,10 @@ const CompanyDetailsPage: React.FC = () => {
                     );
                 }
             } else {
-                // First, create a new location in the locations table.
+                // Create a new location first.
                 const { id, ...locationData } = editingLocation;
-                const newLocationRes = await axiosInstance.post(
-                    `/locations`,
-                    locationData,
-                    config
-                );
-                // Create a new location object merging the returned id with the input data.
+                const newLocationRes = await axiosInstance.post(`/locations`, locationData, config);
                 const newLocation = { ...locationData, id: newLocationRes.data.id };
-                // Then assign the new location to the company or division in the join table.
                 if (selectedDivision && selectedDivision.id) {
                     await axiosInstance.post(
                         `/companies/${companyId}/divisions/${selectedDivision.id}/assign-location`,
@@ -326,7 +307,6 @@ const CompanyDetailsPage: React.FC = () => {
                 }
                 locationResponse = { data: newLocation };
             }
-            // Update displayLocations state
             setDisplayLocations((prev) => {
                 if (!prev) return [locationResponse.data];
                 if (!isNewLocation) {
@@ -342,606 +322,648 @@ const CompanyDetailsPage: React.FC = () => {
         }
     };
 
-    const renderContent = () => {
-        if (!company) {
-            return null;
-        }
-        // Show division name if available; otherwise, generic header.
-        const header =
-            company.hasDivisions && selectedDivision ? selectedDivision.name : 'Company Details';
-        return (
-            <div>
-                <h3 className="text-xl font-semibold mb-2">{header}</h3>
-                {isEditingLocation && (
-                    <div className="bg-gray-100 p-4 rounded shadow space-y-4 mb-4">
-                        {!isNewLocation ? (
-                            <>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Search Existing Locations
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={editingLocation.street1}
-                                        onChange={(e) =>
-                                            setEditingLocation({
-                                                ...editingLocation,
-                                                street1: e.target.value,
-                                            })
-                                        }
-                                        placeholder="Start typing to search locations..."
-                                        className="border border-gray-300 rounded w-full px-3 py-2 focus:outline-none focus:ring focus:ring-indigo-300"
-                                    />
-                                    {editingLocation.street1 && (
-                                        <ul className="border border-gray-300 rounded mt-1 bg-white max-h-40 overflow-y-auto">
-                                            {allLocations
-                                                .filter((loc) =>
-                                                    (`${loc.street1 || ''}${loc.city || ''}${loc.state || ''}`)
-                                                        .toLowerCase()
-                                                        .includes(editingLocation.street1.toLowerCase())
-                                                )
-                                                .map((suggestion) => (
-                                                    <li
-                                                        key={suggestion.id}
-                                                        className="p-2 hover:bg-gray-200 cursor-pointer text-sm"
-                                                        onClick={() => {
-                                                            setEditingLocation(suggestion);
-                                                            setIsNewLocation(false);
-                                                        }}
-                                                    >
-                                                        {suggestion.street1}, {suggestion.city},{' '}
-                                                        {suggestion.state} {suggestion.zipCode}
-                                                    </li>
-                                                ))}
-                                        </ul>
-                                    )}
-                                </div>
-                                <div className="flex space-x-4">
-                                    <button
-                                        onClick={() => {
-                                            if (editingLocation.id) {
-                                                handleLocationSubmit(new Event('submit') as any);
-                                            }
-                                        }}
-                                        className="bg-blue-600 text-white rounded px-4 py-2 hover:bg-blue-700"
-                                    >
-                                        Use Selected Location
-                                    </button>
-                                    <button
-                                        onClick={() => {
-                                            setIsNewLocation(true);
-                                            setEditingLocation({
-                                                street1: '',
-                                                street2: '',
-                                                city: '',
-                                                state: '',
-                                                zipCode: '',
-                                            });
-                                        }}
-                                        className="bg-green-600 text-white rounded px-4 py-2 hover:bg-green-700"
-                                    >
-                                        Add New Location
-                                    </button>
-                                    <button
-                                        onClick={() => setIsEditingLocation(false)}
-                                        className="bg-gray-600 text-white rounded px-4 py-2 hover:bg-gray-700"
-                                    >
-                                        Cancel
-                                    </button>
-                                </div>
-                            </>
+        // New contact state and handlers
+        const [isAddingContact, setIsAddingContact] = useState(false);
+        const [newContactName, setNewContactName] = useState('');
+        const [newContactPhone, setNewContactPhone] = useState('');
+        const [newContactEmail, setNewContactEmail] = useState('');
+
+        const handleAddContactClick = () => {
+            setIsAddingContact(true);
+        };
+
+        const handleContactSubmit = async (e: FormEvent) => {
+            e.preventDefault();
+            if (!session || !(session as any).accessToken) {
+                console.error('Missing session info');
+                return;
+            }
+            const config = {
+                headers: {
+                    Authorization: `Bearer ${(session as any).accessToken}`,
+                },
+            };
+            try {
+                let contactResponse: { data: Contact };
+                const contactData = {
+                    name: newContactName,
+                    phone: newContactPhone,
+                    email: newContactEmail,
+                };
+                if (company && company.hasDivisions && selectedDivision && selectedDivision.id) {
+                    contactResponse = await axiosInstance.post(
+                        `/companies/${companyId}/divisions/${selectedDivision.id}/contacts`,
+                        contactData,
+                        config
+                    );
+                    // Update local division contacts if available
+                    setSelectedDivision({
+                        ...selectedDivision,
+                        contacts: [...(selectedDivision.contacts || []), contactResponse.data],
+                    });
+                } else if (company) {
+                    contactResponse = await axiosInstance.post(
+                        `/companies/${company.id}/contacts`,
+                        contactData,
+                        config
+                    );
+                    setContacts((prev) => [...prev, contactResponse.data]);
+                }
+                setNewContactName('');
+                setNewContactPhone('');
+                setNewContactEmail('');
+                setIsAddingContact(false);
+            } catch (error) {
+                console.error('Failed to add contact', error);
+            }
+        };
+
+        const renderContent = () => {
+            if (!company) return null;
+
+            return (
+            <div className="p-6">
+                {/* Header: Company name + breadcrumb */}
+                <div className="flex justify-between items-center">
+                <h1 className="text-3xl font-bold">{company.name}</h1>
+                <div className="flex items-center space-x-1 text-sm">
+                    <span
+                    onClick={() => router.push('/dashboard')}
+                    className="cursor-pointer text-lightbluesl hover:underline"
+                    >
+                    Dashboard
+                    </span>
+                    <span>{'>'}</span>
+                    <span
+                    onClick={() => router.push('/dashboard')}
+                    className="cursor-pointer text-lightbluesl hover:underline"
+                    >
+                    Company
+                    </span>
+                    <span>{'>'}</span>
+                    <span className="font-bold">{company.name}</span>
+                </div>
+                </div>
+                <hr className="my-4" />
+
+                {/* Company status and type stacked vertically */}
+                <div className="flex flex-col space-y-1">
+                <span className={`font-semibold ${getStatusColorClass(company.status)}`}>
+                    {formatStatus(company.status)}
+                </span>
+                <span className="font-semibold">Type: {company.type}</span>
+                </div>
+                <hr className="my-4" />
+
+                <div className="mb-6">
+                <h2 className="text-xl font-bold mb-2">Contacts</h2>
+                {contacts && contacts.length > 0 ? (
+                    <div className="flex flex-row gap-4">
+                    {contacts.map((contact) => (
+                        <div key={contact.id} className="p-2 border rounded flex-1">
+                        <div className="font-semibold">{contact.name}</div>
+                        <div className="text-sm text-gray-500">
+                            Phone: {contact.phone || 'N/A'}
+                        </div>
+                        <div className="text-sm text-gray-500">
+                            Email: {contact.email || 'N/A'}
+                        </div>
+                        </div>
+                    ))}
+                    </div>
+                ) : (
+                    <div className="text-gray-500">No contacts available.</div>
+                )}
+                <button
+                    onClick={handleAddContactClick}
+                    className="flex items-center text-blue-600 mt-2"
+                >
+                    <Plus size={16} />
+                    <span className="ml-1">Add Contact</span>
+                </button>
+                </div>
+
+                {/* Company Contacts Section (global only) */}
+                {!company.hasDivisions && (
+                <div className="mb-6">
+                    <h2 className="text-xl font-bold mb-2">Contacts</h2>
+                    {contacts && contacts.length > 0 ? (
+                    <div className="flex flex-row gap-4">
+                        {contacts.map((contact) => (
+                        <div key={contact.id} className="p-2 border rounded flex-1">
+                            <div className="font-semibold">{contact.name}</div>
+                            <div className="text-sm text-gray-500">
+                            Phone: {contact.phone || 'N/A'}
+                            </div>
+                            <div className="text-sm text-gray-500">
+                            Email: {contact.email || 'N/A'}
+                            </div>
+                        </div>
+                        ))}
+                    </div>
+                    ) : (
+                    <div className="text-gray-500">No contacts available.</div>
+                    )}
+                </div>
+                )}
+                <hr className="my-4 border-gray-300" />
+
+                {/* Division Section: Only if divisions exist */}
+                {company.hasDivisions && selectedDivision && (
+                <div className="mt-6">
+                    <h2 className="text-xl font-bold mb-4">Division: {selectedDivision.name}</h2>
+                    <div className="flex flex-row gap-4">
+                    {/* Division Contracts */}
+                    <div className="flex-1">
+                        <h3 className="text-lg font-semibold mb-2">Contracts</h3>
+                        {selectedDivision.contracts && selectedDivision.contracts.length > 0 ? (
+                        selectedDivision.contracts.map((contract) => (
+                            <div key={contract.id} className="flex flex-col p-2 border rounded mb-2">
+                            <div className="mb-2">{contract.title}</div>
+                            <button className="text-blue-600 underline self-start">
+                                View Contract
+                            </button>
+                            </div>
+                        ))
                         ) : (
-                            <form onSubmit={handleLocationSubmit}>
-                                <div className="space-y-4">
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700">
-                                            Street 1
-                                        </label>
-                                        <input
-                                            type="text"
-                                            value={editingLocation.street1}
-                                            onChange={(e) =>
-                                                setEditingLocation({
-                                                    ...editingLocation,
-                                                    street1: e.target.value,
-                                                })
-                                            }
-                                            className="border border-gray-300 rounded w-full px-3 py-2 focus:outline-none focus:ring focus:ring-indigo-300"
-                                            required
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700">
-                                            Street 2
-                                        </label>
-                                        <input
-                                            type="text"
-                                            value={editingLocation.street2 || ''}
-                                            onChange={(e) =>
-                                                setEditingLocation({
-                                                    ...editingLocation,
-                                                    street2: e.target.value,
-                                                })
-                                            }
-                                            className="border border-gray-300 rounded w-full px-3 py-2 focus:outline-none focus:ring focus:ring-indigo-300"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700">
-                                            City
-                                        </label>
-                                        <input
-                                            type="text"
-                                            value={editingLocation.city}
-                                            onChange={(e) =>
-                                                setEditingLocation({
-                                                    ...editingLocation,
-                                                    city: e.target.value,
-                                                })
-                                            }
-                                            className="border border-gray-300 rounded w-full px-3 py-2 focus:outline-none focus:ring focus:ring-indigo-300"
-                                            required
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700">
-                                            State
-                                        </label>
-                                        <input
-                                            type="text"
-                                            value={editingLocation.state}
-                                            onChange={(e) =>
-                                                setEditingLocation({
-                                                    ...editingLocation,
-                                                    state: e.target.value,
-                                                })
-                                            }
-                                            className="border border-gray-300 rounded w-full px-3 py-2 focus:outline-none focus:ring focus:ring-indigo-300"
-                                            required
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700">
-                                            Zip Code
-                                        </label>
-                                        <input
-                                            type="text"
-                                            value={editingLocation.zipCode}
-                                            onChange={(e) =>
-                                                setEditingLocation({
-                                                    ...editingLocation,
-                                                    zipCode: e.target.value,
-                                                })
-                                            }
-                                            className="border border-gray-300 rounded w-full px-3 py-2 focus:outline-none focus:ring focus:ring-indigo-300"
-                                            required
-                                        />
-                                    </div>
-                                    <div className="flex space-x-4">
-                                        <button
-                                            type="submit"
-                                            className="bg-blue-600 text-white rounded px-4 py-2 hover:bg-blue-700"
-                                        >
-                                            Add New Location
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => setIsNewLocation(false)}
-                                            className="bg-gray-600 text-white rounded px-4 py-2 hover:bg-gray-700"
-                                        >
-                                            Back to Search
-                                        </button>
-                                    </div>
-                                </div>
-                            </form>
+                        <div className="text-gray-500">No contracts available.</div>
                         )}
                     </div>
-                )}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                        <h4 className="font-semibold">Locations</h4>
+
+                    {/* Division Locations */}
+                    <div className="flex-1">
+                        <div className="flex justify-between items-center mb-2">
+                        <h3 className="text-lg font-semibold">Locations</h3>
+                        <button
+                            onClick={handleAddLocationClick}
+                            className="flex items-center text-blue-600"
+                        >
+                            <Plus size={16} />
+                            <span className="ml-1">Add Location</span>
+                        </button>
+                        </div>
+
+                        {/* Inline Edit Location / Add Location Form */}
+                        {isEditingLocation && (
+                        <form onSubmit={handleLocationSubmit} className="p-4 border rounded mb-4 space-y-2">
+                            <h4 className="font-semibold">
+                            {isNewLocation ? 'Add New Location' : 'Edit Location'}
+                            </h4>
+
+                            {/* Line 1: Name */}
+                            <input
+                            type="text"
+                            placeholder="Name"
+                            value={editingLocation.name}
+                            onChange={(e) =>
+                                setEditingLocation({ ...editingLocation, name: e.target.value })
+                            }
+                            className="w-full border p-2"
+                            required
+                            />
+
+                            {/* Line 2: Street 1 */}
+                            <input
+                            type="text"
+                            placeholder="Street 1"
+                            value={editingLocation.street1}
+                            onChange={(e) =>
+                                setEditingLocation({ ...editingLocation, street1: e.target.value })
+                            }
+                            className="w-full border p-2"
+                            required
+                            />
+
+                            {/* Line 3: Street 2 */}
+                            <input
+                            type="text"
+                            placeholder="Street 2"
+                            value={editingLocation.street2 || ''}
+                            onChange={(e) =>
+                                setEditingLocation({ ...editingLocation, street2: e.target.value })
+                            }
+                            className="w-full border p-2"
+                            />
+
+                            {/* Line 4: City, State and Zip Code */}
+                            <div className="flex space-x-2">
+                            <input
+                                type="text"
+                                placeholder="City"
+                                value={editingLocation.city}
+                                onChange={(e) =>
+                                setEditingLocation({ ...editingLocation, city: e.target.value })
+                                }
+                                className="w-1/3 border p-2"
+                                required
+                            />
+                            <input
+                                type="text"
+                                placeholder="State"
+                                value={editingLocation.state}
+                                onChange={(e) =>
+                                setEditingLocation({ ...editingLocation, state: e.target.value })
+                                }
+                                className="w-1/3 border p-2"
+                                required
+                            />
+                            <input
+                                type="text"
+                                placeholder="Zip Code"
+                                value={editingLocation.zipCode}
+                                onChange={(e) =>
+                                setEditingLocation({ ...editingLocation, zipCode: e.target.value })
+                                }
+                                className="w-1/3 border p-2"
+                                required
+                            />
+                            </div>
+
+                            <div className="flex gap-4">
+                            <button type="submit" className="bg-blue-600 text-white px-4 py-2">
+                                Save
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setIsEditingLocation(false)}
+                                className="border px-4 py-2"
+                            >
+                                Cancel
+                            </button>
+                            </div>
+                        </form>
+                        )}
+
                         {displayLocations && displayLocations.length > 0 ? (
-                            <div className="space-y-2">
-                                {displayLocations.map((loc, index) => {
-                                    const streetParts: string[] = [];
-                                    if (loc.street1 && loc.street1.trim() !== '') {
-                                        streetParts.push(loc.street1);
-                                    }
-                                    if (loc.street2 && loc.street2.trim() !== '') {
-                                        streetParts.push(loc.street2);
-                                    }
-                                    const locString = `${streetParts.join(', ')}, ${loc.city}, ${loc.state} ${loc.zipCode}`;
-                                    const openMap = () => {
-                                        const encodedAddress = encodeURIComponent(locString);
-                                        if (/iPhone|iPad|iPod/.test(navigator.userAgent)) {
-                                            window.open(
-                                                `https://maps.apple.com/?q=${encodedAddress}`,
-                                                '_blank'
-                                            );
-                                        } else {
-                                            window.open(
-                                                `https://www.google.com/maps/search/?api=1&query=${encodedAddress}`,
-                                                '_blank'
-                                            );
-                                        }
-                                    };
-                                    return (
-                                        <div
-                                            key={loc.id ?? index}
-                                            className="flex items-center space-x-2"
-                                        >
-                                            <div
-                                                className="flex-1 text-gray-800 border-b border-gray-200 pb-1 cursor-pointer select-text"
-                                                onClick={() => {
-                                                    navigator.clipboard.writeText(locString);
-                                                    alert('Location copied to clipboard');
-                                                }}
-                                            >
-                                                {locString}
+                            displayLocations.map((location) => {
+                                const address = `${location.street1} ${location.street2 || ''} ${location.city} ${location.state} ${location.zipCode}`.trim();
+                                const mapsUrl = /iPhone|iPad|iPod/.test(navigator.userAgent)
+                                    ? `http://maps.apple.com/?q=${encodeURIComponent(address)}`
+                                    : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
+                                
+                                const handleCopy = (e: React.MouseEvent<HTMLDivElement>) => {
+                                    e.stopPropagation();
+                                    navigator.clipboard.writeText(address);
+                                    alert('Address copied to clipboard!');
+                                };
+
+                                return (
+                                    <div
+                                        key={location.id}
+                                        className="flex flex-col p-2 border rounded mb-2 cursor-pointer"
+                                        onClick={handleCopy}
+                                    >
+                                        <div className="flex justify-between items-center mb-1">
+                                            <div className="font-bold">{location.name || 'Location Name'}</div>
+                                            <div className="flex gap-2">
+                                                <button
+                                                    type="button"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        window.open(mapsUrl, '_blank');
+                                                    }}
+                                                    className="text-blue-600"
+                                                >
+                                                    <MapPin size={16} />
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleEditLocationClick(location);
+                                                    }}
+                                                    className="text-blue-600"
+                                                >
+                                                    <Edit2 size={16} />
+                                                </button>
                                             </div>
-                                            <button
-                                                onClick={openMap}
-                                                className="flex items-center space-x-1 text-blue-500 hover:underline"
-                                            >
-                                                <MapPin className="h-5 w-5" />
-                                            </button>
-                                            <button
-                                                onClick={() => handleEditLocationClick(loc)}
-                                                className="flex items-center space-x-1 text-green-500 hover:underline"
-                                            >
-                                                <Edit2 className="h-5 w-5" />
-                                            </button>
                                         </div>
-                                    );
-                                })}
-                            </div>
+                                        <div className="mb-1">{location.street1}</div>
+                                        <div className="mb-1">{location.street2 || ''}</div>
+                                        <div className="mb-1">
+                                            {location.city}, {location.state} {location.zipCode}
+                                        </div>
+                                        <div>{"United States"}</div>
+                                    </div>
+                                );
+                            })
                         ) : (
-                            <p className="text-gray-600 italic">No location info available</p>
-                        )}
-                        <div className="mt-2">
-                            <button
-                                onClick={handleAddLocationClick}
-                                className="flex items-center space-x-1 text-blue-500 hover:underline"
-                            >
-                                <Plus className="h-5 w-5" />
-                                <span>Add Location</span>
-                            </button>
-                        </div>
-                    </div>
-                    <div>
-                        <h4 className="font-semibold">Contracts</h4>
-                        {contracts.length > 0 ? (
-                            <ul>
-                                {contracts.map((contract) => (
-                                    <li key={contract.id}>{contract.title}</li>
-                                ))}
-                            </ul>
-                        ) : (
-                            <p>No contracts available</p>
+                        <div className="text-gray-500">No locations assigned.</div>
                         )}
                     </div>
-                    <div>
-                        <h4 className="font-semibold">Contacts</h4>
-                        {contacts.length > 0 ? (
-                            <ul>
-                                {contacts.map((contact) => (
-                                    <li key={contact.id}>{contact.name}</li>
-                                ))}
-                            </ul>
-                        ) : (
-                            <p>No contacts available</p>
-                        )}
-                    </div>
-                </div>
-            </div>
-        );
-    };
 
-    return (
-        <div className="p-4">
-            {company ? (
-                <div className="mb-4">
-                    {isEditing ? (
-                        <form
-                            onSubmit={handleEditSubmit}
-                            className="bg-gray-100 p-4 rounded shadow space-y-4"
+                    {/* Division Contacts */}
+                    <div className="flex-1">
+                        <div className="flex justify-between items-center mb-2">
+                        <h3 className="text-lg font-semibold">Division Contacts</h3>
+                        <button
+                            onClick={handleAddContactClick}
+                            className="flex items-center text-blue-600"
                         >
-                            <div className="flex flex-col md:flex-row md:items-center md:justify-between">
-                                <div className="flex-1 mr-4">
-                                    <label className="block text-sm font-medium text-gray-700">
-                                        Company Name
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={editName}
-                                        onChange={(e) => setEditName(e.target.value)}
-                                        className="border border-gray-300 rounded w-full px-3 py-2 focus:outline-none focus:ring focus:ring-indigo-300"
-                                        required
-                                    />
-                                </div>
+                            <Plus size={16} />
+                            <span className="ml-1">Add Contact</span>
+                        </button>
+                        </div>
+                        {selectedDivision.contacts && selectedDivision.contacts.length > 0 ? (
+                        selectedDivision.contacts.map((contact) => (
+                            <div key={contact.id} className="p-2 border rounded mb-2 flex flex-col">
+                            <div className="font-semibold">{contact.name}</div>
+                            <div className="text-sm text-gray-500">
+                                Phone: {contact.phone || 'N/A'}
                             </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700">
-                                    Company Type
-                                </label>
-                                <select
-                                    value={editType}
-                                    onChange={(e) => setEditType(e.target.value as CompanyType)}
-                                    className="border border-gray-300 rounded w-full px-3 py-2"
-                                >
-                                    <option value="Customer">Customer</option>
-                                    <option value="Subcontractor">Subcontractor</option>
-                                    <option value="Vendor">Vendor</option>
-                                </select>
+                            <div className="text-sm text-gray-500">
+                                Email: {contact.email || 'N/A'}
                             </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700">
-                                    Company Status
-                                </label>
-                                <select
-                                    value={editStatus}
-                                    onChange={(e) =>
-                                        setEditStatus(e.target.value as 'ACTIVE' | 'INACTIVE' | 'SUSPENDED')
-                                    }
-                                    className="border border-gray-300 rounded w-full px-3 py-2"
-                                >
-                                    <option value="ACTIVE">Active</option>
-                                    <option value="INACTIVE">Inactive</option>
-                                    <option value="SUSPENDED">Suspended</option>
-                                </select>
                             </div>
-                            <div className="flex space-x-4">
-                                <button
-                                    type="submit"
-                                    className="bg-blue-600 text-white rounded px-4 py-2 hover:bg-blue-700"
-                                >
-                                    Save
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => setIsEditing(false)}
-                                    className="bg-gray-600 text-white rounded px-4 py-2 hover:bg-gray-700"
-                                >
-                                    Cancel
-                                </button>
+                        ))
+                        ) : (
+                        <div className="text-gray-500">No contacts available.</div>
+                        )}
+
+                        {/* Inline Add Contact Form */}
+                        {isAddingContact && (
+                        <form onSubmit={handleContactSubmit} className="p-4 border rounded mt-4 space-y-2">
+                            <h4 className="font-semibold">Add Contact</h4>
+                            <input
+                            type="text"
+                            placeholder="Name"
+                            value={newContactName}
+                            onChange={(e) => setNewContactName(e.target.value)}
+                            className="w-full border p-2"
+                            required
+                            />
+                            <input
+                            type="text"
+                            placeholder="Phone"
+                            value={newContactPhone}
+                            onChange={(e) => setNewContactPhone(e.target.value)}
+                            className="w-full border p-2"
+                            />
+                            <input
+                            type="email"
+                            placeholder="Email"
+                            value={newContactEmail}
+                            onChange={(e) => setNewContactEmail(e.target.value)}
+                            className="w-full border p-2"
+                            />
+                            <div className="flex gap-4">
+                            <button type="submit" className="bg-blue-600 text-white px-4 py-2">
+                                Save Contact
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setIsAddingContact(false)}
+                                className="border px-4 py-2"
+                            >
+                                Cancel
+                            </button>
                             </div>
                         </form>
-                    ) : (
-                        <div className="flex justify-between items-center">
-                            <div>
-                                <h1 className="text-3xl font-bold">{company.name}</h1>
-                                <p className="mt-2">Type: {company.type}</p>
-                                <p className="mt-2">
-                                    Status:{' '}
-                                    <span className={`${getStatusColorClass(company.status)} font-bold`}>
-                                        {formatStatus(company.status)}
-                                    </span>
-                                </p>
-                            </div>
-                            <div className="flex flex-col items-end">
-                                <div className="flex items-center space-x-1 text-sm">
-                                    <span
-                                        className="cursor-pointer text-blue-600 hover:underline"
-                                        onClick={() => router.push('/dashboard')}
-                                    >
-                                        Dashboard
-                                    </span>
-                                    <span>{'>'}</span>
-                                    <span
-                                        className="cursor-pointer text-blue-600 hover:underline"
-                                        onClick={() => router.push('/company')}
-                                    >
-                                        Companies
-                                    </span>
-                                    <span>{'>'}</span>
-                                    <span className="font-bold">Company Management</span>
-                                </div>
-                                <button
-                                    onClick={handleEditClick}
-                                    className="bg-indigo-600 text-white rounded px-4 py-2 hover:bg-indigo-700 mt-4"
-                                >
-                                    Edit Company
-                                </button>
-                            </div>
-                        </div>
-                    )}
-                </div>
-            ) : (
-                <p>Loading company information...</p>
-            )}
-            <hr className="w-full border-t-2 border-gray-500 mb-4" />
-
-            <div className="flex">
-                {company && company.divisions && company.divisions.length > 0 && (
-                    <div className="w-1/4 border-r pr-4">
-                        <h2 className="text-xl font-semibold mb-4">Divisions</h2>
-                        <ul>
-                            {company.divisions.map((div) => (
-                                <li
-                                    key={div.id}
-                                    className={`cursor-pointer p-2 ${
-                                        selectedDivision && selectedDivision.id === div.id ? 'bg-gray-200' : ''
-                                    }`}
-                                    onClick={() => setSelectedDivision(div)}
-                                >
-                                    {div.name}
-                                </li>
-                            ))}
-                        </ul>
+                        )}
                     </div>
+                    </div>
+                </div>
                 )}
-                <div className="flex-1 pl-4">{renderContent()}</div>
-            </div>
 
-            {company?.hasDivisions && (
-                <div className="mt-8">
-                    {showNewDivisionForm ? (
-                        <form
-                            onSubmit={async (e) => {
-                                e.preventDefault();
-                                if (!session || !(session as any).accessToken) {
-                                    console.error('No access token found');
-                                    return;
-                                }
-                                try {
-                                    const config = {
-                                        headers: {
-                                            Authorization: `Bearer ${(session as any).accessToken}`,
-                                        },
-                                    };
-                                    const response = await axiosInstance.post(
-                                        `/companies/${companyId}/divisions`,
-                                        {
-                                            name: newDivisionName,
-                                            location: newDivisionLocation,
-                                        },
-                                        config
-                                    );
-                                    setCompany({
-                                        ...company,
-                                        divisions: company.divisions ? [...company.divisions, response.data] : [response.data],
-                                    });
-                                    setNewDivisionName('');
-                                    setNewDivisionLocation({
-                                        street1: '',
-                                        street2: '',
-                                        city: '',
-                                        state: '',
-                                        zipCode: '',
-                                    });
-                                    setShowNewDivisionForm(false);
-                                } catch (error) {
-                                    console.error('Failed to add division', error);
-                                }
-                            }}
-                            className="bg-gray-100 p-4 rounded shadow space-y-4"
+                {/* Global Section: If company does not have divisions */}
+                {!company.hasDivisions && (
+                <div className="mt-6">
+                    <h2 className="text-xl font-bold mb-4">Company Details</h2>
+                    <div className="flex flex-row gap-4">
+                    {/* Contracts */}
+                    <div className="flex-1">
+                        <h3 className="text-lg font-semibold mb-2">Contracts</h3>
+                        {contracts && contracts.length > 0 ? (
+                        contracts.map((contract) => (
+                            <div key={contract.id} className="flex flex-col p-2 border rounded mb-2">
+                            <div className="mb-2">{contract.title}</div>
+                            <button className="text-blue-600 underline self-start">
+                                View Contract
+                            </button>
+                            </div>
+                        ))
+                        ) : (
+                        <div className="text-gray-500">No contracts available.</div>
+                        )}
+                    </div>
+
+                    {/* Locations */}
+                    <div className="flex-1">
+                        <div className="flex justify-between items-center mb-2">
+                        <h3 className="text-lg font-semibold">Locations</h3>
+                        <button
+                            onClick={handleAddLocationClick}
+                            className="flex items-center text-blue-600"
                         >
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700">
-                                    New Division Name
-                                </label>
-                                <input
-                                    type="text"
-                                    value={newDivisionName}
-                                    onChange={(e) => setNewDivisionName(e.target.value)}
-                                    className="border border-gray-300 rounded w-full px-3 py-2 focus:outline-none focus:ring focus:ring-indigo-300"
-                                    required
-                                />
+                            <Plus size={16} />
+                            <span className="ml-1">Add Location</span>
+                        </button>
+                        </div>
+                        {displayLocations && displayLocations.length > 0 ? (
+                        displayLocations.map((location) => (
+                            <div key={location.id} className="flex flex-col p-2 border rounded mb-2">
+                            <div className="mb-2">
+                                {location.street1}, {location.city}, {location.state}{' '}
+                                {location.zipCode}
                             </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700">
-                                    Street 1
-                                </label>
-                                <input
-                                    type="text"
-                                    value={newDivisionLocation.street1}
-                                    onChange={(e) =>
-                                        setNewDivisionLocation({
-                                            ...newDivisionLocation,
-                                            street1: e.target.value,
-                                        })
-                                    }
-                                    className="border border-gray-300 rounded w-full px-3 py-2 focus:outline-none focus:ring focus:ring-indigo-300"
-                                    required
-                                />
+                            <button
+                                onClick={() => handleEditLocationClick(location)}
+                                className="text-blue-600 underline self-start"
+                            >
+                                Edit
+                            </button>
                             </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700">
-                                    Street 2
-                                </label>
-                                <input
-                                    type="text"
-                                    value={newDivisionLocation.street2}
-                                    onChange={(e) =>
-                                        setNewDivisionLocation({
-                                            ...newDivisionLocation,
-                                            street2: e.target.value,
-                                        })
-                                    }
-                                    className="border border-gray-300 rounded w-full px-3 py-2 focus:outline-none focus:ring focus:ring-indigo-300"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700">
-                                    City
-                                </label>
-                                <input
-                                    type="text"
-                                    value={newDivisionLocation.city}
-                                    onChange={(e) =>
-                                        setNewDivisionLocation({
-                                            ...newDivisionLocation,
-                                            city: e.target.value,
-                                        })
-                                    }
-                                    className="border border-gray-300 rounded w-full px-3 py-2 focus:outline-none focus:ring focus:ring-indigo-300"
-                                    required
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700">
-                                    State
-                                </label>
-                                <input
-                                    type="text"
-                                    value={newDivisionLocation.state}
-                                    onChange={(e) =>
-                                        setNewDivisionLocation({
-                                            ...newDivisionLocation,
-                                            state: e.target.value,
-                                        })
-                                    }
-                                    className="border border-gray-300 rounded w-full px-3 py-2 focus:outline-none focus:ring focus:ring-indigo-300"
-                                    required
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700">
-                                    Zip Code
-                                </label>
-                                <input
-                                    type="text"
-                                    value={newDivisionLocation.zipCode}
-                                    onChange={(e) =>
-                                        setNewDivisionLocation({
-                                            ...newDivisionLocation,
-                                            zipCode: e.target.value,
-                                        })
-                                    }
-                                    className="border border-gray-300 rounded w-full px-3 py-2 focus:outline-none focus:ring focus:ring-indigo-300"
-                                    required
-                                />
-                            </div>
-                            <div className="flex space-x-4">
-                                <button
-                                    type="submit"
-                                    className="bg-blue-600 text-white rounded px-4 py-2 hover:bg-blue-700"
-                                >
-                                    Add Division
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => setShowNewDivisionForm(false)}
-                                    className="bg-gray-600 text-white rounded px-4 py-2 hover:bg-gray-700"
-                                >
-                                    Cancel
-                                </button>
+                        ))
+                        ) : (
+                        <div className="text-gray-500">No locations assigned.</div>
+                        )}
+
+                        {/* Inline Edit/Add Location Form */}
+                        {isEditingLocation && (
+                        <form onSubmit={handleLocationSubmit} className="p-4 border rounded mt-4 space-y-2">
+                            <h4 className="font-semibold">
+                            {isNewLocation ? 'Add New Location' : 'Edit Location'}
+                            </h4>
+                            <input
+                            type="text"
+                            placeholder="Street 1"
+                            value={editingLocation.street1}
+                            onChange={(e) =>
+                                setEditingLocation({
+                                ...editingLocation,
+                                street1: e.target.value,
+                                })
+                            }
+                            className="w-full border p-2"
+                            required
+                            />
+                            <input
+                            type="text"
+                            placeholder="Street 2"
+                            value={editingLocation.street2 || ''}
+                            onChange={(e) =>
+                                setEditingLocation({
+                                ...editingLocation,
+                                street2: e.target.value,
+                                })
+                            }
+                            className="w-full border p-2"
+                            />
+                            <input
+                            type="text"
+                            placeholder="City"
+                            value={editingLocation.city}
+                            onChange={(e) =>
+                                setEditingLocation({
+                                ...editingLocation,
+                                city: e.target.value,
+                                })
+                            }
+                            className="w-full border p-2"
+                            required
+                            />
+                            <input
+                            type="text"
+                            placeholder="State"
+                            value={editingLocation.state}
+                            onChange={(e) =>
+                                setEditingLocation({
+                                ...editingLocation,
+                                state: e.target.value,
+                                })
+                            }
+                            className="w-full border p-2"
+                            required
+                            />
+                            <input
+                            type="text"
+                            placeholder="Zip Code"
+                            value={editingLocation.zipCode}
+                            onChange={(e) =>
+                                setEditingLocation({
+                                ...editingLocation,
+                                zipCode: e.target.value,
+                                })
+                            }
+                            className="w-full border p-2"
+                            required
+                            />
+                            <div className="flex gap-4">
+                            <button type="submit" className="bg-blue-600 text-white px-4 py-2">
+                                Save
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setIsEditingLocation(false)}
+                                className="border px-4 py-2"
+                            >
+                                Cancel
+                            </button>
                             </div>
                         </form>
-                    ) : (
-                        <div className="fixed bottom-4 right-4">
-                            <button
-                                onClick={() => setShowNewDivisionForm(true)}
-                                className="p-2 bg-green-600 text-white rounded-full w-12 h-12 flex items-center justify-center hover:bg-green-700"
-                            >
-                                <Plus />
-                            </button>
+                        )}
+                    </div>
+
+                    {/* Contacts */}
+                    <div className="flex-1">
+                        <div className="flex justify-between items-center mb-2">
+                        <h3 className="text-lg font-semibold">Contacts</h3>
+                        <button
+                            onClick={handleAddContactClick}
+                            className="flex items-center text-blue-600"
+                        >
+                            <Plus size={16} />
+                            <span className="ml-1">Add Contact</span>
+                        </button>
                         </div>
-                    )}
+                        {contacts && contacts.length > 0 ? (
+                        contacts.map((contact) => (
+                            <div key={contact.id} className="p-2 border rounded mb-2 flex flex-col">
+                            <div className="font-semibold">{contact.name}</div>
+                            <div className="text-sm text-gray-500">
+                                Phone: {contact.phone || 'N/A'}
+                            </div>
+                            <div className="text-sm text-gray-500">
+                                Email: {contact.email || 'N/A'}
+                            </div>
+                            </div>
+                        ))
+                        ) : (
+                        <div className="text-gray-500">No contacts available.</div>
+                        )}
+
+                        {/* Inline Add Contact Form */}
+                        {isAddingContact && (
+                        <form onSubmit={handleContactSubmit} className="p-4 border rounded mt-4 space-y-2">
+                            <h4 className="font-semibold">Add Contact</h4>
+                            <input
+                            type="text"
+                            placeholder="Name"
+                            value={newContactName}
+                            onChange={(e) => setNewContactName(e.target.value)}
+                            className="w-full border p-2"
+                            required
+                            />
+                            <input
+                            type="text"
+                            placeholder="Phone"
+                            value={newContactPhone}
+                            onChange={(e) => setNewContactPhone(e.target.value)}
+                            className="w-full border p-2"
+                            />
+                            <input
+                            type="email"
+                            placeholder="Email"
+                            value={newContactEmail}
+                            onChange={(e) => setNewContactEmail(e.target.value)}
+                            className="w-full border p-2"
+                            />
+                            <div className="flex gap-4">
+                            <button type="submit" className="bg-blue-600 text-white px-4 py-2">
+                                Save Contact
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setIsAddingContact(false)}
+                                className="border px-4 py-2"
+                            >
+                                Cancel
+                            </button>
+                            </div>
+                        </form>
+                        )}
+                    </div>
+                    </div>
                 </div>
-            )}
-        </div>
-    );
-};
+                )}
+                <div className="bg-white mt-6 border rounded p-4">
+                  <details>
+                    <summary className="font-bold mb-2 cursor-pointer">View Jobs</summary>
+                    <div className="max-h-40 overflow-y-auto border p-2">
+                      {/* Replace with dynamic job items if available */}
+                      <div>Job 1</div>
+                      <div>Job 2</div>
+                      <div>Job 3</div>
+                      <div>Job 4</div>
+                      <div>Job 5</div>
+                    </div>
+                  </details>
+                  <div className="mt-4">
+                  </div>
+                </div>
+                <hr className="my-4" />
+                <div className="mt-4 flex justify-between">
+                  <button className="flex items-center text-blue-600">
+                    <Plus size={16} />
+                    <span className="ml-1">Add New Division</span>
+                  </button>
+                </div>
+              </div>
+            );
+        };
+        
+        return renderContent();
+
+    };
 
 export default CompanyDetailsPage;
