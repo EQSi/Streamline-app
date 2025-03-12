@@ -41,7 +41,7 @@ function CompanyLayoutContent({ children }: { children: React.ReactNode }) {
         <div className={`${isDarkMode ? 'dark' : 'light'} relative flex bg-gray-50 text-gray-900 w-full min-h-screen`}>
             <Sidebar />
             <main
-                className={`flex flex-col flex-1 py-7 px-4 bg-gray-50 transition-all duration-300 z-0 ${
+                className={`flex flex-col flex-1 py-4 px-2 bg-gray-50 transition-all duration-300 z-0 ${
                     isSidebarCollapsed ? 'ml-20' : 'ml-72'
                 }`}
             >

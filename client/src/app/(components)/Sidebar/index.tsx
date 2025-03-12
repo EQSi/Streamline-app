@@ -11,10 +11,10 @@ import {
   LucideIcon,
   Menu,
   Truck,
-  Users,
+  UsersRound,
   Wrench,
-  UserPen,
-  Building2,
+  KeyRound,
+  Building,
   MapPinned,
 } from 'lucide-react';
 import Link from 'next/link';
@@ -111,15 +111,15 @@ const Sidebar = () => {
         <SidebarLink href="/dashboard" icon={Layout} label="Dashboard" isCollapsed={isSidebarCollapsed} />
         <SidebarLink href="/schedule" icon={Calendar} label="Schedule" isCollapsed={isSidebarCollapsed} />
         <SidebarLink href="/jobs" icon={Wrench} label="Jobs" isCollapsed={isSidebarCollapsed} />
-        <SidebarLink href="/company" icon={Building2} label="Companies" isCollapsed={isSidebarCollapsed} />
+        <SidebarLink href="/company" icon={Building} label="Companies" isCollapsed={isSidebarCollapsed} />
         <SidebarLink href="/locations" icon={MapPinned} label="Locations" isCollapsed={isSidebarCollapsed} />
-        <SidebarLink href="/customers" icon={Users} label="Customers" isCollapsed={isSidebarCollapsed} />
+        <SidebarLink href="/customers" icon={UsersRound} label="Customers" isCollapsed={isSidebarCollapsed} />
         <SidebarLink href="/contacts" icon={Contact} label="Contacts" isCollapsed={isSidebarCollapsed} />
         <SidebarLink href="/tasks" icon={LayoutList} label="Tasks" isCollapsed={isSidebarCollapsed} />
         <SidebarLink href="/vendors" icon={Truck} label="Vendors" isCollapsed={isSidebarCollapsed} />
         <SidebarLink href="/equipment" icon={Forklift} label="Equipment" isCollapsed={isSidebarCollapsed} />
         {ability.can('manage', 'AppSettings') && (
-          <SidebarLink href="/admin" icon={UserPen} label="Admin" isCollapsed={isSidebarCollapsed} />
+          <SidebarLink href="/admin" icon={KeyRound} label="Admin" isCollapsed={isSidebarCollapsed} />
         )}
       </div>
       

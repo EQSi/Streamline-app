@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import axiosInstance from '@/src/state/axios';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { Search, ArrowRight } from 'lucide-react';
+import { Search, ArrowRight, ChevronRight} from 'lucide-react';
 
 export type CompanyType = 'Customer' | 'Subcontractor' | 'Vendor';
 
@@ -183,7 +183,7 @@ const CompaniesPage: React.FC = () => {
     const [showAddCompanyForm, setShowAddCompanyForm] = useState(false);
     // Retaining sorting state but without visible sort buttons.
     const [sortCriteria, setSortCriteria] = useState<SortCriteria>('name');
-    const [sortAscending] = useState(true);
+    const [sortAscending, setSortAscending] = useState(true);
 
     const [filters, setFilters] = useState<FilterCriteria>({
         search: '',
@@ -276,6 +276,12 @@ const CompaniesPage: React.FC = () => {
             {/* Consolidated filter bar with search, filters, and the Add New Company button */}
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
                 <div className="flex items-center gap-4 flex-1">
+                    <button
+                        onClick={() => setShowAddCompanyForm((prev) => !prev)}
+                        className="bg-[#414A9E] text-white rounded px-4 py-2 hover:bg-[#29ABE2]"
+                    >
+                        {showAddCompanyForm ? 'Cancel' : 'Add New Company'}
+                    </button>
                     <div className="relative">
                         <input
                             type="text"
@@ -308,12 +314,14 @@ const CompaniesPage: React.FC = () => {
                         <option value="INACTIVE">Inactive</option>
                         <option value="SUSPENDED">Suspended</option>
                     </select>
-                    <button
-                        onClick={() => setShowAddCompanyForm((prev) => !prev)}
-                        className="bg-[#414A9E] text-white rounded px-4 py-2 hover:bg-[#29ABE2]"
+                    <select
+                        value={sortAscending ? 'asc' : 'desc'}
+                        onChange={(e) => setSortAscending(e.target.value === 'asc')}
+                        className="border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring focus:ring-indigo-300"
                     >
-                        {showAddCompanyForm ? 'Cancel' : 'Add New Company'}
-                    </button>
+                        <option value="asc">A-Z</option>
+                        <option value="desc">Z-A</option>
+                    </select>
                 </div>
             </div>
 
@@ -325,7 +333,7 @@ const CompaniesPage: React.FC = () => {
                         <div className="px-2 py-2 font-semibold flex-1 text-left">Name</div>
                         <div className="px-2 py-2 font-semibold flex-1 text-left">Type</div>
                         <div className="px-2 py-2 font-semibold flex-1 text-left">Status</div>
-                        <div className="px-2 py-2"></div>
+                        <div className="px-2 py-2 font-semibold w-11"></div>
                     </div>
                 </div>
                 {sortedCompanies.map((company, index) => (
@@ -342,7 +350,7 @@ const CompaniesPage: React.FC = () => {
                             <span className={getStatusClass(company.status)}>{formatStatus(company.status)}</span>
                         </div>
                         <div>
-                            <ArrowRight size={20} className="text-lightbluesl" />
+                            <ChevronRight size={20} className="text-lightbluesl" />
                         </div>
                     </div>
                 ))}

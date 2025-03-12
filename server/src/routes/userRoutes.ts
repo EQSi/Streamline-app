@@ -93,7 +93,9 @@ router.post('/users', async (req: Request, res: Response) => {
       res.status(409).json({ error: 'Username already exists' });
       return;
     }
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedPassword = password.startsWith('$2b$') || password.startsWith('$2a$')
+      ? password
+      : await bcrypt.hash(password, 10);
     const newUser = await prisma.user.create({
       data: {
         username,

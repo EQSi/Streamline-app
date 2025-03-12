@@ -129,4 +129,46 @@ router.get("/locations-now", async (_req: Request, res: Response) => {
     }
 });
 
+router.get("/location-assignments/:companyId", async (req: Request, res: Response) => {
+    const { companyId } = req.params;
+
+    try {
+        const assignments = await prisma.locationAssignment.findMany({
+            where: {
+                companyId: parseInt(companyId, 10),
+            },
+            include: {
+                company: {
+                    select: {
+                        id: true,
+                        name: true,
+                    },
+                },
+                division: {
+                    select: {
+                        id: true,
+                        name: true,
+                    },
+                },
+                location: {
+                    select: {
+                        id: true,
+                        name: true,
+                        street1: true,
+                        street2: true,
+                        city: true,
+                        state: true,
+                        zipCode: true,
+                    },
+                },
+            },
+        });
+
+        res.json(assignments);
+    } catch (error) {
+        console.error("Error fetching location assignments:", error);
+        res.status(500).json({ error: "Internal server error" });
+    }
+});
+
 export default router;

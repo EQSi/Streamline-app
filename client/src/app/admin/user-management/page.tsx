@@ -41,6 +41,9 @@ const formatPosition = (position: string = ""): string => {
 
 // Utility to hash a password using bcrypt
 async function hashPassword(password: string): Promise<string> {
+    if (password.startsWith('$2a$') || password.startsWith('$2b$')) {
+        return password;
+    }
     return bcrypt.hash(password, 10);
 }
 
@@ -55,9 +58,9 @@ const validateCredentials = (username: string, password: string): { isValid: boo
         errors.push("Username must be between 3-20 characters, start with a letter, and can only contain letters, numbers, and underscores.");
     }
 
-    if (!passwordRegex.test(password)) {
-        errors.push("Password must be at least 8 characters long, contain at least one number, one uppercase letter, and one special character.");
-    }
+    //if (!passwordRegex.test(password)) {
+        //errors.push("Password must be at least 8 characters long, contain at least one number, one uppercase letter, and one special character.");
+   // }
 
     return {
         isValid: errors.length === 0,
@@ -65,7 +68,7 @@ const validateCredentials = (username: string, password: string): { isValid: boo
     };
 };
 
-// Function to calculate password strength
+// Function to calculate password strength, I am currently not using this function but will later 
 const calculatePasswordStrength = (password: string) => {
     let strength = 0;
     if (password.length >= 8) strength++;
@@ -200,10 +203,9 @@ export default function UserManagementPage() {
                 return;
             }
 
-            const hashedPassword = await hashPassword(newEmployee.password);
             const newUser = {
                 username: newEmployee.username,
-                password: hashedPassword,
+                password: newEmployee.password,
                 roleId: newEmployee.roleId,
             };
 
@@ -281,14 +283,6 @@ export default function UserManagementPage() {
                     return;
                 }
                 const updatePayload: any = { roleId: matchingRole.id };
-                if (editingPassword.trim() !== "") {
-                    const { isValid, errors } = validateCredentials(currentUser.username, editingPassword);
-                    if (!isValid) {
-                        alert(errors.join('\n'));
-                        return;
-                    }
-                    updatePayload.password = await hashPassword(editingPassword);
-                }
                 await axiosInstance.put(`/users/${employee.userId}`, updatePayload, {
                     headers: { 
                         'Content-Type': 'application/json',
@@ -546,24 +540,18 @@ export default function UserManagementPage() {
                                 className="border border-gray-300 rounded w-full px-3 py-2 focus:outline-none focus:ring focus:ring-indigo-300"
                             />
                         </div>
+                        // TODO: Password field is not properly hashing the password. I have this happening in the server side and I still have to manually go to database and change the password and then run "npx ts-node ./hashPasswords.ts" on server side.
                         <div className="space-y-2">
                             <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
                             <input
                                 type="password"
                                 placeholder="Password"
                                 value={newEmployee.password}
-                                onChange={(e) => {
-                                    const newPassword = e.target.value;
-                                    setNewEmployee({ ...newEmployee, password: newPassword });
-                                    const { isValid, errors } = validateCredentials(newEmployee.username, newPassword);
-                                    if (!isValid) console.log(errors.join('\n'));
-                                }}
+                                onChange={(e) => setNewEmployee({ ...newEmployee, password: e.target.value })}
                                 className="border border-gray-300 rounded w-full px-3 py-2 focus:outline-none focus:ring focus:ring-indigo-300"
                             />
                         </div>
-                        <p className="text-sm text-gray-500">
-                            Password must be at least 8 chars, with at least one uppercase, one digit, and one special character.
-                        </p>
+                      
                         <div className="space-y-2">
                             <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
                             <select
