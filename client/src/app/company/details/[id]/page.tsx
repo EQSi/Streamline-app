@@ -206,10 +206,15 @@ const CompanyDetailsPage: React.FC = () => {
                         `/location-assignments/${company.id}`,
                         config
                     );
-                    const divisionLocations = assignmentsRes.data
-                        .filter((assignment: any) => assignment.division)
-                        .map((assignment: any) => assignment.location);
-                    setDisplayLocations(divisionLocations);
+                    const assignments = assignmentsRes.data;
+                    // Update each division with its corresponding location assignments
+                    const updatedDivisions = company.divisions?.map((division: Division) => ({
+                        ...division,
+                        locationAssignments: assignments
+                            .filter((assignment: any) => assignment.division && assignment.division.id === division.id)
+                            .map((assignment: any) => ({ location: assignment.location })),
+                    }));
+                    setCompany({ ...company, divisions: updatedDivisions });
                 } else {
                     // For companies without divisions, load global locations, contracts and contacts
                     const [locationsRes, contractsRes, contactsRes] = await Promise.all([
@@ -227,7 +232,7 @@ const CompanyDetailsPage: React.FC = () => {
         };
 
         fetchExtraData();
-    }, [company, selectedDivision, session]);
+    }, [selectedDivision, session, company?.id]);
 
     useEffect(() => {
         const fetchAllLocations = async () => {
@@ -486,7 +491,13 @@ const CompanyDetailsPage: React.FC = () => {
 
                 {/* Global Contacts Section */}
                 <div className="mb-6">
-                    <h2 className="text-xl font-bold mb-2">Contacts</h2>
+                    <h2 className="text-xl font-bold mb-1">Contacts</h2>
+                    <button
+                        onClick={() => setIsAddingDivisionContact(true)}
+                        className="bg-brandingpurple text-white px-7 py-2 rounded mt-1"
+                    >
+                        Add Contact
+                    </button>
                     {contacts && contacts.length > 0 ? (
                         <div className="flex flex-row gap-4">
                             {contacts.map((contact) => (
@@ -502,15 +513,9 @@ const CompanyDetailsPage: React.FC = () => {
                             ))}
                         </div>
                     ) : (
-                        <div className="text-gray-500">No contacts available.</div>
+                        <div className="text-gray-500 mt-1">No contacts available.</div>
                     )}
-                    <button
-                        onClick={handleAddContactClick}
-                        className="flex items-center text-darkbluesl mt-2"
-                    >
-                        <Plus size={16} />
-                        <span className="ml-1">Add Contact</span>
-                    </button>
+                   
                     <hr className="mt-4" />
                     {isAddingContact && (
                         <form
@@ -567,282 +572,284 @@ const CompanyDetailsPage: React.FC = () => {
                                     <ChevronDown className="transition-transform text-darkbluesl duration-200 group-open:rotate-180" />
                                 </summary>
                                 <div className="flex flex-row gap-4">
-                                {/* Division Contracts */}
-                                <div className="flex-1">
-                                    <h3 className="text-lg font-semibold mb-2">Contracts</h3>
-                                    {division.contracts && division.contracts.length > 0 ? (
-                                        division.contracts.map((contract) => (
-                                            <div key={contract.id} className="flex flex-col p-2 border rounded mb-2">
-                                                <div className="mb-2">{contract.title}</div>
-                                                <button className="text-blue-600 underline self-start">
-                                                    View Contract
-                                                </button>
-                                            </div>
-                                        ))
-                                    ) : (
-                                        <div className="text-gray-500">No contracts available.</div>
-                                    )}
-                                </div>
-
-                                {/* Division Locations */}
-                                <div className="flex-1">
-                                    <div className="flex justify-between items-center mb-1">
-                                        <h3 className="text-lg font-semibold">Locations</h3>
+                                    {/* Division Contracts */}
+                                    <div className="flex-1">
+                                        <h3 className="text-lg font-semibold mb-1">Contracts</h3>
+                                        <button
+                                            type="button"
+                                            className="bg-brandingpurple text-white px-7 py-2 rounded mt-1"
+                                        >
+                                            Add Contracts
+                                        </button>
+                                        {division.contracts && division.contracts.length > 0 ? (
+                                            division.contracts.map((contract) => (
+                                                <div key={contract.id} className="flex flex-col p-2 border rounded mb-2">
+                                                    <div className="mb-2">{contract.title}</div>
+                                                    <button className="text-blue-600 underline self-start">
+                                                        View Contract
+                                                    </button>
+                                                </div>
+                                                
+                                            ))
+                                          
+                                        ) : (
+                                            
+                                            <div className="text-gray-500 mt-1">No contracts available.</div>
+                                        )}
                                         
                                     </div>
-                                    <button
+
+                                    {/* Division Locations */}
+                                    <div className="flex-1">
+                                        <div className="flex justify-between items-center mb-1">
+                                            <h3 className="text-lg font-semibold">Locations</h3>
+                                        </div>
+                                        <button
                                             onClick={handleAddLocationClick}
                                             className="bg-brandingpurple text-white px-7 py-2 rounded mt-1"
                                         >
                                             Add Location
-                                    </button>
+                                        </button>
 
-                                    {/* Inline Edit/Add Location Form */}
-                                    {isEditingLocation && (
-                                        <form onSubmit={handleLocationSubmit} className="p-4 mb-4 space-y-2">
-                                            <h4 className="font-semibold">
-                                                {isNewLocation ? 'Add New Location' : 'Edit Location'}
-                                            </h4>
-                                            <input
-                                                type="text"
-                                                placeholder="Name"
-                                                value={editingLocation.name}
-                                                onChange={(e) =>
-                                                    setEditingLocation({ ...editingLocation, name: e.target.value })
-                                                }
-                                                className="w-full border p-2"
-                                                required
-                                            />
-                                            <input
-                                                type="text"
-                                                placeholder="Street 1"
-                                                value={editingLocation.street1}
-                                                onChange={(e) =>
-                                                    setEditingLocation({ ...editingLocation, street1: e.target.value })
-                                                }
-                                                className="w-full border p-2"
-                                                required
-                                            />
-                                            <input
-                                                type="text"
-                                                placeholder="Street 2"
-                                                value={editingLocation.street2 || ''}
-                                                onChange={(e) =>
-                                                    setEditingLocation({ ...editingLocation, street2: e.target.value })
-                                                }
-                                                className="w-full border p-2"
-                                            />
-                                            <div className="flex space-x-2">
+                                        {/* Inline Edit/Add Location Form */}
+                                        {isEditingLocation && (
+                                            <form onSubmit={handleLocationSubmit} className="p-4 mb-4 space-y-2">
+                                                <h4 className="font-semibold">
+                                                    {isNewLocation ? 'Add New Location' : 'Edit Location'}
+                                                </h4>
                                                 <input
                                                     type="text"
-                                                    placeholder="City"
-                                                    value={editingLocation.city}
+                                                    placeholder="Name"
+                                                    value={editingLocation.name}
                                                     onChange={(e) =>
-                                                        setEditingLocation({ ...editingLocation, city: e.target.value })
+                                                        setEditingLocation({ ...editingLocation, name: e.target.value })
                                                     }
-                                                    className="w-1/3 border p-2"
+                                                    className="w-full border p-2"
                                                     required
                                                 />
                                                 <input
                                                     type="text"
-                                                    placeholder="State"
-                                                    value={editingLocation.state}
+                                                    placeholder="Street 1"
+                                                    value={editingLocation.street1}
                                                     onChange={(e) =>
-                                                        setEditingLocation({ ...editingLocation, state: e.target.value })
+                                                        setEditingLocation({ ...editingLocation, street1: e.target.value })
                                                     }
-                                                    className="w-1/3 border p-2"
+                                                    className="w-full border p-2"
                                                     required
                                                 />
                                                 <input
                                                     type="text"
-                                                    placeholder="Zip Code"
-                                                    value={editingLocation.zipCode}
+                                                    placeholder="Street 2"
+                                                    value={editingLocation.street2 || ''}
                                                     onChange={(e) =>
-                                                        setEditingLocation({ ...editingLocation, zipCode: e.target.value })
+                                                        setEditingLocation({ ...editingLocation, street2: e.target.value })
                                                     }
-                                                    className="w-1/3 border p-2"
-                                                    required
+                                                    className="w-full border p-2"
                                                 />
-                                            </div>
-                                            <div className="flex gap-4">
-                                                <button type="submit" className="bg-blue-600 text-white px-4 py-2">
-                                                    Save
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setIsEditingLocation(false)}
-                                                    className="border px-4 py-2"
-                                                >
-                                                    Cancel
-                                                </button>
-                                            </div>
-                                        </form>
-                                    )}
-
-                                    // TODO: Locations are only showing for the first divsions and not the rest. 
-                                    {(() => {
-                                        // Use the displayLocations state for the selected division, otherwise fallback to division.locationAssignments
-                                        const divisionLocations = selectedDivision && division.id === selectedDivision.id
-                                            ? displayLocations
-                                            : division.locationAssignments
+                                                <div className="flex space-x-2">
+                                                    <input
+                                                        type="text"
+                                                        placeholder="City"
+                                                        value={editingLocation.city}
+                                                        onChange={(e) =>
+                                                            setEditingLocation({ ...editingLocation, city: e.target.value })
+                                                        }
+                                                        className="w-1/3 border p-2"
+                                                        required
+                                                    />
+                                                    <input
+                                                        type="text"
+                                                        placeholder="State"
+                                                        value={editingLocation.state}
+                                                        onChange={(e) =>
+                                                            setEditingLocation({ ...editingLocation, state: e.target.value })
+                                                        }
+                                                        className="w-1/3 border p-2"
+                                                        required
+                                                    />
+                                                    <input
+                                                        type="text"
+                                                        placeholder="Zip Code"
+                                                        value={editingLocation.zipCode}
+                                                        onChange={(e) =>
+                                                            setEditingLocation({ ...editingLocation, zipCode: e.target.value })
+                                                        }
+                                                        className="w-1/3 border p-2"
+                                                        required
+                                                    />
+                                                </div>
+                                                <div className="flex gap-4">
+                                                    <button type="submit" className="bg-blue-600 text-white px-4 py-2">
+                                                        Save
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setIsEditingLocation(false)}
+                                                        className="border px-4 py-2"
+                                                    >
+                                                        Cancel
+                                                    </button>
+                                                </div>
+                                            </form>
+                                        )}
+                                        {(() => {
+                                            const divisionLocations = division.locationAssignments
                                                 ? division.locationAssignments.map(({ location }) => location)
                                                 : [];
-                                        return divisionLocations.length > 0 ? (
-                                            divisionLocations.map((location, index) => {
-                                                const address = `${location.street1} ${location.street2 || ''} ${location.city} ${location.state} ${location.zipCode}`.trim();
-                                                const mapsUrl = /iPhone|iPad|iPod/.test(navigator.userAgent)
-                                                    ? `http://maps.apple.com/?q=${encodeURIComponent(address)}`
-                                                    : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
-                                                return (
-                                                    <div
-                                                        key={`${location.id}-${index}`}
-                                                        className="flex flex-col p-2 mb-2"
-                                                    >
-                                                        <div className="flex justify-between items-center mb-1">
-                                                            <div className="font-bold">
-                                                                {location.name || 'Location Name'}
-                                                            </div>
-                                                            <div className="flex gap-2">
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={(e) => {
-                                                                        e.stopPropagation();
-                                                                        window.open(mapsUrl, '_blank');
-                                                                    }}
-                                                                    className="text-lightbluesl"
-                                                                >
-                                                                    <MapPin size={16} />
-                                                                </button>
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={(e) => {
-                                                                        e.stopPropagation();
-                                                                        handleEditLocationClick(location);
-                                                                    }}
-                                                                    className="text-lightbluesl"
-                                                                >
-                                                                    <Edit2 size={16} />
-                                                                </button>
-                                                            </div>
-                                                        </div>
-                                                        <div className="mb-1">{location.street1}</div>
-                                                        {location.street2 && (
-                                                            <div className="mb-1">{location.street2}</div>
-                                                        )}
-                                                        <div className="mb-1">
-                                                            {location.city}, {location.state} {location.zipCode}
-                                                        </div>
-                                                        <div>United States</div>
-                                                        <button
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                navigator.clipboard.writeText(address);
-                                                                alert('Address copied to clipboard!');
-                                                            }}
-                                                            className="mt-1 text-xs text-gray-500"
+                                            return divisionLocations.length > 0 ? (
+                                                divisionLocations.map((location, index) => {
+                                                    const address = `${location.street1} ${location.street2 || ''} ${location.city} ${location.state} ${location.zipCode}`.trim();
+                                                    const mapsUrl = /iPhone|iPad|iPod/.test(navigator.userAgent)
+                                                        ? `http://maps.apple.com/?q=${encodeURIComponent(address)}`
+                                                        : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
+                                                    return (
+                                                        <div
+                                                            key={`${location.id}-${index}`}
+                                                            className="flex flex-col p-2 mb-2"
                                                         >
-                                                            Copy Address
-                                                        </button>
-                                                    </div>
-                                                );
-                                            })
-                                        ) : (
-                                            <div className="text-gray-500">No locations assigned.</div>
-                                        );
-                                    })()}
-                                </div>
+                                                            <div className="flex justify-between items-center mb-1">
+                                                                <div className="font-bold">
+                                                                    {location.name || 'Location Name'}
+                                                                </div>
+                                                                <div className="flex gap-2">
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            window.open(mapsUrl, '_blank');
+                                                                        }}
+                                                                        className="text-lightbluesl"
+                                                                    >
+                                                                        <MapPin size={16} />
+                                                                    </button>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            handleEditLocationClick(location);
+                                                                        }}
+                                                                        className="text-lightbluesl"
+                                                                    >
+                                                                        <Edit2 size={16} />
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                            <div
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    navigator.clipboard.writeText(address);
+                                                                    alert('Address copied to clipboard!');
+                                                                }}
+                                                                className="cursor-pointer"
+                                                            >
+                                                                <div className="mb-1">{location.street1}</div>
+                                                                {location.street2 && (
+                                                                    <div className="mb-1">{location.street2}</div>
+                                                                )}
+                                                                <div className="mb-1">
+                                                                    {location.city}, {location.state} {location.zipCode}
+                                                                </div>
+                                                                <div>United States</div>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })
+                                            ) : (
+                                                <div className="text-gray-500 mt-1">No locations assigned.</div>
+                                            );
+                                        })()}
+                                    </div>
                                         
-                                {/* Division Contacts */}
-                                <div className="flex-1">
-                                    <div className="flex justify-between items-center mb-2">
-                                        <h3 className="text-lg font-semibold">Division Contacts</h3>
+                                    {/* Division Contacts */}
+                                    <div className="flex-1">
+                                        <div className="flex justify-between items-center mb-1">
+                                            <h3 className="text-lg font-semibold">Division Contacts</h3>
+                                        </div>
                                         <button
                                             onClick={() => setIsAddingDivisionContact(true)}
-                                            className="flex items-center text-darkbluesl"
+                                            className="bg-brandingpurple text-white px-7 py-2 rounded mt-1"
                                         >
-                                            <Plus size={16} />
-                                            <span className="ml-1">Add Division Contact</span>
+                                            Add Division Contact
                                         </button>
-                                    </div>
-                                    {division.contacts && division.contacts.length > 0 ? (
-                                        division.contacts.map((contact) => (
-                                            <div key={contact.id} className="p-2 border rounded mb-2 flex flex-col">
-                                                <div className="font-semibold">{contact.name}</div>
-                                                <div className="text-sm text-gray-500">
-                                                    Phone: {contact.phone || 'N/A'}
+                                        {division.contacts && division.contacts.length > 0 ? (
+                                            division.contacts.map((contact) => (
+                                                <div key={contact.id} className="p-2 border rounded mb-2 flex flex-col">
+                                                    <div className="font-semibold">{contact.name}</div>
+                                                    <div className="text-sm text-gray-500">
+                                                        Phone: {contact.phone || 'N/A'}
+                                                    </div>
+                                                    <div className="text-sm text-gray-500">
+                                                        Email: {contact.email || 'N/A'}
+                                                    </div>
                                                 </div>
-                                                <div className="text-sm text-gray-500">
-                                                    Email: {contact.email || 'N/A'}
-                                                </div>
-                                            </div>
-                                        ))
-                                    ) : (
-                                        <div className="text-gray-500">No contacts available.</div>
-                                    )}
+                                            ))
+                                        ) : (
+                                            <div className="text-gray-500 mt-1">No contacts available.</div>
+                                        )}
 
-                                    {isAddingDivisionContact && (
-                                        <form onSubmit={handleContactSubmit} className="p-4 border rounded mt-4 space-y-2">
-                                            <h4 className="font-semibold">Add Division Contact</h4>
-                                            <input
-                                                type="text"
-                                                placeholder="Name"
-                                                value={newContactName}
-                                                onChange={(e) => setNewContactName(e.target.value)}
-                                                className="w-full border p-2"
-                                                required
-                                            />
-                                            <input
-                                                type="text"
-                                                placeholder="Phone"
-                                                value={newContactPhone}
-                                                onChange={(e) => setNewContactPhone(e.target.value)}
-                                                className="w-full border p-2"
-                                            />
-                                            <input
-                                                type="email"
-                                                placeholder="Email"
-                                                value={newContactEmail}
-                                                onChange={(e) => setNewContactEmail(e.target.value)}
-                                                className="w-full border p-2"
-                                            />
-                                            <div className="flex gap-4">
-                                                <button type="submit" className="bg-blue-600 text-white px-4 py-2">
-                                                    Save Contact
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setIsAddingDivisionContact(false)}
-                                                    className="border px-4 py-2"
-                                                >
-                                                    Cancel
-                                                </button>
-                                            </div>
-                                        </form>
-                                    )}
-                                </div>
-                            </div>
-                            {/* Job Bar */}
-                            <div className="bg-white mt-6 border rounded p-4">
-                                <details className="group">
-                                    <summary className="cursor-pointer flex justify-between items-center font-bold mb-2">
-                                        <span>View Jobs</span>
-                                        <ChevronDown className="transition-transform text-darkbluesl duration-200 group-open:rotate-180" />
-                                    </summary>
-                                    <div className="max-h-40 overflow-y-scroll border p-2">
-                                        <div>Job 1</div>
-                                        <div>Job 2</div>
-                                        <div>Job 3</div>
-                                        <div>Job 4</div>
-                                        <div>Job 5</div>
-                                        <div>Job 6</div>
-                                        <div>Job 7</div>
-                                        <div>Job 8</div>
-                                        <div>Job 9</div>
-                                        <div>Job 10</div>
+                                        {isAddingDivisionContact && (
+                                            <form onSubmit={handleContactSubmit} className="p-4 border rounded mt-4 space-y-2">
+                                                <h4 className="font-semibold">Add Division Contact</h4>
+                                                <input
+                                                    type="text"
+                                                    placeholder="Name"
+                                                    value={newContactName}
+                                                    onChange={(e) => setNewContactName(e.target.value)}
+                                                    className="w-full border p-2"
+                                                    required
+                                                />
+                                                <input
+                                                    type="text"
+                                                    placeholder="Phone"
+                                                    value={newContactPhone}
+                                                    onChange={(e) => setNewContactPhone(e.target.value)}
+                                                    className="w-full border p-2"
+                                                />
+                                                <input
+                                                    type="email"
+                                                    placeholder="Email"
+                                                    value={newContactEmail}
+                                                    onChange={(e) => setNewContactEmail(e.target.value)}
+                                                    className="w-full border p-2"
+                                                />
+                                                <div className="flex gap-4">
+                                                    <button type="submit" className="bg-blue-600 text-white px-4 py-2">
+                                                        Save Contact
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setIsAddingDivisionContact(false)}
+                                                        className="border px-4 py-2"
+                                                    >
+                                                        Cancel
+                                                    </button>
+                                                </div>
+                                            </form>
+                                        )}
                                     </div>
-                                </details>
-                                <div className="mt-4"></div>
-                            </div>
+                                </div>
+                                {/* Job Bar */}
+                                <div className="bg-white mt-6 border rounded p-4">
+                                    <details className="group">
+                                        <summary className="cursor-pointer flex justify-between items-center font-bold mb-2">
+                                            <span>View Jobs</span>
+                                            <ChevronDown className="transition-transform text-darkbluesl duration-200 group-open:rotate-180" />
+                                        </summary>
+                                        <div className="max-h-40 overflow-y-scroll border p-2">
+                                            <div>Job 1</div>
+                                            <div>Job 2</div>
+                                            <div>Job 3</div>
+                                            <div>Job 4</div>
+                                            <div>Job 5</div>
+                                            <div>Job 6</div>
+                                            <div>Job 7</div>
+                                            <div>Job 8</div>
+                                            <div>Job 9</div>
+                                            <div>Job 10</div>
+                                        </div>
+                                    </details>
+                                    <div className="mt-4"></div>
+                                </div>
                             </details>
                         </div>
                     ))
