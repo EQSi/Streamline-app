@@ -33,7 +33,8 @@ interface Contract {
 
 interface Contact {
     id: number;
-    name: string;
+    firstName: string;
+    lastName: string;
     phone?: string;
     email?: string;
 }
@@ -393,7 +394,8 @@ const CompanyDetailsPage: React.FC = () => {
     // New contact state and handlers
     const [isAddingContact, setIsAddingContact] = useState(false);
     const [isAddingDivisionContact, setIsAddingDivisionContact] = useState(false);
-    const [newContactName, setNewContactName] = useState('');
+    const [newContactFirstName, setNewContactFirstName] = useState('');
+    const [newContactLastName, setNewContactLastName] = useState('');
     const [newContactPhone, setNewContactPhone] = useState('');
     const [newContactEmail, setNewContactEmail] = useState('');
 
@@ -419,7 +421,8 @@ const CompanyDetailsPage: React.FC = () => {
             };
             let contactResponse: { data: Contact };
             const contactData = {
-                name: newContactName,
+                firstName: newContactFirstName,
+                lastName: newContactLastName,
                 phone: newContactPhone,
                 email: newContactEmail,
             };
@@ -441,7 +444,8 @@ const CompanyDetailsPage: React.FC = () => {
                 );
                 setContacts((prev) => [...prev, contactResponse.data]);
             }
-            setNewContactName('');
+            setNewContactFirstName('');
+            setNewContactLastName('');
             setNewContactPhone('');
             setNewContactEmail('');
             setIsAddingContact(false);
@@ -450,6 +454,7 @@ const CompanyDetailsPage: React.FC = () => {
             console.error('Failed to add contact', error);
         }
     };
+
 
 
         const renderContent = () => {
@@ -502,7 +507,7 @@ const CompanyDetailsPage: React.FC = () => {
                         <div className="flex flex-row gap-4">
                             {contacts.map((contact) => (
                                 <div key={contact.id} className="p-2 border rounded flex-1">
-                                    <div className="font-semibold">{contact.name}</div>
+                                    <div className="font-semibold">{contact.firstName} {contact.lastName}</div>
                                     <div className="text-sm text-gray-500">
                                         Phone: {contact.phone || 'N/A'}
                                     </div>
@@ -525,9 +530,17 @@ const CompanyDetailsPage: React.FC = () => {
                             <h4 className="font-semibold">Add Contact</h4>
                             <input
                                 type="text"
-                                placeholder="Name"
-                                value={newContactName}
-                                onChange={(e) => setNewContactName(e.target.value)}
+                                placeholder="First Name"
+                                value={newContactFirstName}
+                                onChange={(e) => setNewContactFirstName(e.target.value)}
+                                className="w-full border p-2"
+                                required
+                            />
+                            <input
+                                type="text"
+                                placeholder="Last Name"
+                                value={newContactLastName}
+                                onChange={(e) => setNewContactLastName(e.target.value)}
                                 className="w-full border p-2"
                                 required
                             />
@@ -774,7 +787,7 @@ const CompanyDetailsPage: React.FC = () => {
                                         {division.contacts && division.contacts.length > 0 ? (
                                             division.contacts.map((contact) => (
                                                 <div key={contact.id} className="p-2 border rounded mb-2 flex flex-col">
-                                                    <div className="font-semibold">{contact.name}</div>
+                                                    <div className="font-semibold">{contact.firstName} {contact.lastName}</div>
                                                     <div className="text-sm text-gray-500">
                                                         Phone: {contact.phone || 'N/A'}
                                                     </div>
@@ -792,9 +805,17 @@ const CompanyDetailsPage: React.FC = () => {
                                                 <h4 className="font-semibold">Add Division Contact</h4>
                                                 <input
                                                     type="text"
-                                                    placeholder="Name"
-                                                    value={newContactName}
-                                                    onChange={(e) => setNewContactName(e.target.value)}
+                                                    placeholder="First Name"
+                                                    value={newContactFirstName}
+                                                    onChange={(e) => setNewContactFirstName(e.target.value)}
+                                                    className="w-full border p-2"
+                                                    required
+                                                />
+                                                <input
+                                                    type="text"
+                                                    placeholder="Last Name"
+                                                    value={newContactLastName}
+                                                    onChange={(e) => setNewContactLastName(e.target.value)}
                                                     className="w-full border p-2"
                                                     required
                                                 />
