@@ -110,7 +110,7 @@ router.delete('/companies/:id', async (req: Request, res: Response, next: NextFu
     }
 });
 
-// Add a division to a company
+
 // Add a division to a company
 router.post('/companies/:companyId/divisions', async (req: Request, res: Response, next: NextFunction) => {
     const { companyId } = req.params;

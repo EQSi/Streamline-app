@@ -26,6 +26,28 @@ router.get("/locations", async (_req: Request, res: Response) => {
             },
         });
 
+        /**
+         * Formats an array of location objects into a structured representation.
+         *
+         * Each location is transformed by:
+         * - Filtering its assignments to extract associated company and division names.
+         * - Creating a unique list of company names and a unique list of division names.
+         * - Mapping the location's properties into a new object that includes:
+         *   - A stringified location ID.
+         *   - The location's name.
+         *   - Unique arrays for companies and divisions.
+         *   - An embedded address object containing street1, street2, city, state, and zip code.
+         *
+         * @example
+         * const formattedLocations = locations.map((loc) => {
+         *   // Transformation logic as in the example above.
+         * });
+         *
+         * @param loc A location object with additional 'locationAssignments' details comprised of company
+         *            and division associations.
+         * @returns A formatted location object with structured address, unique company names, and unique division names.
+         */
+        
         const formattedLocations = locations.map((loc: Location & { locationAssignments: any[] }) => {
             const companies = loc.locationAssignments
                 .filter((la: any) => la.company)
